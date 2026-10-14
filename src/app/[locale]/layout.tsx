@@ -24,8 +24,11 @@ export async function generateMetadata({
       type: "website",
       siteName: "Crooki Bake Bar",
       locale: locale === "en" ? "en_US" : "es_CO",
+      // Declared here because this openGraph object replaces the root one,
+      // which would otherwise carry app/opengraph-image.jpg.
+      images: [{ url: "/opengraph-image.jpg", width: 1200, height: 630, alt: t("og_alt") }],
     },
-    twitter: { card: "summary_large_image" },
+    twitter: { card: "summary_large_image", images: ["/opengraph-image.jpg"] },
   };
 }
 
