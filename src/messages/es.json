@@ -12,7 +12,9 @@
     "title": "Galletas recién horneadas.",
     "subtitle": "Descubre el placer de una galleta perfecta. Recién horneadas cada día, con masas suaves, rellenos irresistibles y sabores que no olvidarás.",
     "cta_order": "Pedir ahora",
-    "cta_menu": "Ver menú"
+    "cta_menu": "Ver menú",
+    "location": "Centro Histórico · Cartagena · Todos los días 11 a.m. – 9 p.m.",
+    "image_alt": "Galletas Crooki apiladas junto a su caja"
   },
   "featured": {
     "title": "Nuestros sabores",
@@ -23,7 +25,9 @@
     "description": "En Crooki creemos que cada galleta debe ser una experiencia única. Usamos solo los mejores ingredientes, recetas artesanales y mucho amor para crear las galletas perfectas.",
     "feature1": "Ingredientes premium",
     "feature2": "Recetas artesanales",
-    "feature3": "Hecho con amor"
+    "feature3": "Hecho con amor",
+    "badge": "100% Artesanal",
+    "image_alt": "Galletas Pistachio Dream de Crooki"
   },
   "menu": {
     "title": "Nuestro Menú",

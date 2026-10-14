@@ -1,13 +1,14 @@
+import Image from "next/image";
 import { getTranslations } from "next-intl/server";
-import { CheckCircle2 } from "lucide-react";
+import { ChefHat, Cookie, Heart, Wheat } from "lucide-react";
 
 export default async function AboutSection({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: "about" });
 
   const features = [
-    { key: "feature1", icon: "🌾" },
-    { key: "feature2", icon: "👩‍🍳" },
-    { key: "feature3", icon: "❤️" },
+    { key: "feature1", Icon: Wheat },
+    { key: "feature2", Icon: ChefHat },
+    { key: "feature3", Icon: Heart },
   ] as const;
 
   return (
@@ -17,9 +18,12 @@ export default async function AboutSection({ locale }: { locale: string }) {
           {/* Image side */}
           <div className="relative">
             <div className="rounded-3xl overflow-hidden shadow-2xl">
-              <img
+              <Image
                 src="/images/pistachio-dream.jpg"
-                alt="Crooki artisan cookies"
+                alt={t("image_alt")}
+                width={3842}
+                height={5763}
+                sizes="(min-width: 1024px) 560px, 100vw"
                 className="w-full h-96 lg:h-[500px] object-cover"
               />
             </div>
@@ -29,8 +33,8 @@ export default async function AboutSection({ locale }: { locale: string }) {
               style={{ backgroundColor: "#8b0031" }}
             >
               <div>
-                <div className="text-3xl">🍪</div>
-                <div className="text-xs mt-1">100% Artesanal</div>
+                <Cookie className="w-8 h-8 mx-auto text-[#f3c78b]" aria-hidden="true" />
+                <div className="text-xs mt-1">{t("badge")}</div>
               </div>
             </div>
           </div>
@@ -45,13 +49,13 @@ export default async function AboutSection({ locale }: { locale: string }) {
             </p>
 
             <div className="flex flex-col gap-4">
-              {features.map(({ key, icon }) => (
+              {features.map(({ key, Icon }) => (
                 <div key={key} className="flex items-center gap-4">
                   <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 text-xl"
+                    className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
                     style={{ backgroundColor: "#8b003115" }}
                   >
-                    {icon}
+                    <Icon className="w-6 h-6 text-[#8b0031]" aria-hidden="true" />
                   </div>
                   <span className="font-semibold text-gray-800 text-lg">
                     {t(key)}

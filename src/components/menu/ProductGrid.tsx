@@ -200,7 +200,7 @@ function CategorySection({
   productsById: Map<string, Product>;
 }) {
   return (
-    <section id={`cat-${slug}`} className="scroll-mt-24">
+    <section id={`cat-${slug}`} className="scroll-mt-36">
       <div className="flex items-center gap-4 mb-8">
         <h2 className="font-black text-3xl md:text-4xl" style={{ color: "#8b0031" }}>
           {title}

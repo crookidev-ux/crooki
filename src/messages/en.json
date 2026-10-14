@@ -12,7 +12,9 @@
     "title": "Freshly Baked Cookies.",
     "subtitle": "Discover the pleasure of a perfect cookie. Freshly baked every day, with soft doughs, irresistible fillings, and flavors you won't forget.",
     "cta_order": "Order now",
-    "cta_menu": "View menu"
+    "cta_menu": "View menu",
+    "location": "Historic Center · Cartagena · Every day 11 a.m. – 9 p.m.",
+    "image_alt": "Stack of Crooki cookies next to their box"
   },
   "featured": {
     "title": "Our flavors",
@@ -23,7 +25,9 @@
     "description": "At Crooki we believe every cookie should be a unique experience. We use only the finest ingredients, artisan recipes and lots of love to create the perfect cookies.",
     "feature1": "Premium ingredients",
     "feature2": "Artisan recipes",
-    "feature3": "Made with love"
+    "feature3": "Made with love",
+    "badge": "100% Artisan",
+    "image_alt": "Crooki Pistachio Dream cookies"
   },
   "menu": {
     "title": "Our Menu",
