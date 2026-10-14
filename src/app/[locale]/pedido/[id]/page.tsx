@@ -1,9 +1,13 @@
+import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { CheckCircle2, Package, ArrowLeft, MessageCircle } from "lucide-react";
 import { buildWhatsAppOrderUrl } from "@/lib/whatsapp";
+
+// Checkout and order pages are private: keep them out of search results.
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export default async function OrderConfirmationPage({
   params,

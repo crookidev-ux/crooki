@@ -7,6 +7,7 @@ import Crumbs from "@/components/layout/Crumbs";
 import { routing } from "@/i18n/routing";
 import { getLegalDoc, legalDocs } from "@/content/legal";
 import LegalMarkdown from "@/components/legal/LegalMarkdown";
+import { alternatesFor } from "@/lib/seo";
 import BonusRain from "@/components/legal/BonusRain";
 
 // Club Crooki digital card (same link as the QR in /public/reward.png).
@@ -28,7 +29,12 @@ export async function generateMetadata({
   const { locale, slug } = await params;
   const doc = getLegalDoc(slug);
   if (!doc) return {};
-  return { title: `${doc[locale === "en" ? "en" : "es"].title} | Crooki` };
+  const tm = await getTranslations({ locale, namespace: "meta" });
+  return {
+    title: doc[locale === "en" ? "en" : "es"].title,
+    description: tm("legal_description"),
+    alternates: alternatesFor(`/legal/${slug}`, locale),
+  };
 }
 
 export default async function LegalDocPage({

@@ -65,7 +65,7 @@ export default function FeaturedProducts({ products, locale }: Props) {
                   </p>
                   <div className="flex items-center justify-between">
                     <span className="font-black text-xl" style={{ color: "#8b0031" }}>
-                      ${product.price.toLocaleString()}
+                      ${product.price.toLocaleString("es-CO")}
                     </span>
                     {product.available ? (
                       <button

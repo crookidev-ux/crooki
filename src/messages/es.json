@@ -171,5 +171,16 @@
     "explore": "Explora",
     "club": "Club Crooki",
     "rights": "Todos los derechos reservados."
+  },
+  "meta": {
+    "site_title": "Crooki Bake Bar · Galletas artesanales en Cartagena",
+    "site_description": "Galletas artesanales recién horneadas todos los días en el Centro Histórico de Cartagena. Pide a domicilio por WhatsApp o visítanos en Calle 36 # 5-70.",
+    "home_title": "Crooki Bake Bar · Galletas artesanales en Cartagena",
+    "menu_title": "Menú",
+    "menu_description": "Galletas rellenas, cajas para regalar, helados, brownies, malteadas y bebidas. Arma tu pedido de Crooki y recíbelo en Cartagena.",
+    "merch_title": "Merch",
+    "merch_description": "Gorras, camisetas y tote bags exclusivos de Crooki. Llévate un pedacito de Crooki y de Cartagena contigo.",
+    "legal_description": "Políticas y términos de Crooki Bake Bar: tratamiento de datos, cookies y Club Crooki.",
+    "og_alt": "Crooki Bake Bar · Galletas artesanales en Cartagena"
   }
 }

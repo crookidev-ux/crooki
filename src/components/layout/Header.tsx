@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
@@ -45,12 +46,14 @@ export default function Header({ locale }: { locale: string }) {
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center">
-          <span
-            className="text-2xl font-black tracking-tight text-white px-4 py-1 rounded-sm"
-            style={{ backgroundColor: "#8b0031" }}
-          >
-            CROOKI
-          </span>
+          <Image
+            src="/crooki-wordmark-red.png"
+            alt="Crooki Bake Bar"
+            width={913}
+            height={224}
+            priority
+            className="h-7 md:h-8 w-auto"
+          />
         </Link>
 
         {/* Desktop Nav */}

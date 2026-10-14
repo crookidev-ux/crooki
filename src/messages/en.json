@@ -171,5 +171,16 @@
     "explore": "Explore",
     "club": "Club Crooki",
     "rights": "All rights reserved."
+  },
+  "meta": {
+    "site_title": "Crooki Bake Bar · Artisan cookies in Cartagena",
+    "site_description": "Artisan cookies freshly baked every day in Cartagena’s Historic Center. Order delivery on WhatsApp or visit us at Calle 36 # 5-70.",
+    "home_title": "Crooki Bake Bar · Artisan cookies in Cartagena",
+    "menu_title": "Menu",
+    "menu_description": "Stuffed cookies, gift boxes, ice cream, brownies, shakes and drinks. Build your Crooki order and get it delivered in Cartagena.",
+    "merch_title": "Merch",
+    "merch_description": "Exclusive Crooki caps, tees and tote bags. Take a little piece of Crooki and Cartagena with you.",
+    "legal_description": "Crooki Bake Bar policies and terms: data processing, cookies and Club Crooki.",
+    "og_alt": "Crooki Bake Bar · Artisan cookies in Cartagena"
   }
 }

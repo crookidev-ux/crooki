@@ -1,3 +1,6 @@
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
+import { alternatesFor } from "@/lib/seo";
 import Hero from "@/components/home/Hero";
 import FeaturedProducts from "@/components/home/FeaturedProducts";
 import AboutSection from "@/components/home/AboutSection";
@@ -28,6 +31,20 @@ async function getProducts(): Promise<Product[]> {
   } catch {
     return mockProducts.slice(0, 6);
   }
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "meta" });
+  return {
+    title: { absolute: t("home_title") },
+    description: t("site_description"),
+    alternates: alternatesFor("/", locale),
+  };
 }
 
 export default async function HomePage({

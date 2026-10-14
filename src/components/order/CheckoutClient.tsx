@@ -381,7 +381,7 @@ export default function CheckoutClient({ locale }: Props) {
                         )}
                       </div>
                       <span className="font-semibold flex-shrink-0">
-                        ${(linePrice * quantity).toLocaleString()}
+                        ${(linePrice * quantity).toLocaleString("es-CO")}
                       </span>
                     </div>
                   );
@@ -395,7 +395,7 @@ export default function CheckoutClient({ locale }: Props) {
                     className="font-black text-2xl"
                     style={{ color: "#8b0031" }}
                   >
-                    ${totalAmount.toLocaleString()}
+                    ${totalAmount.toLocaleString("es-CO")}
                   </span>
                 </div>
               </div>

@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { alternatesFor } from "@/lib/seo";
 import { getTranslations } from "next-intl/server";
 import ProductGrid from "@/components/menu/ProductGrid";
 import type { CategoryRow, Product } from "@/lib/types";
@@ -35,6 +37,20 @@ async function loadCatalog(): Promise<{ categories: CategoryRow[]; products: Pro
   } catch {
     return { categories: [], products: mockProducts };
   }
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "meta" });
+  return {
+    title: t("menu_title"),
+    description: t("menu_description"),
+    alternates: alternatesFor("/menu", locale),
+  };
 }
 
 export default async function MenuPage({

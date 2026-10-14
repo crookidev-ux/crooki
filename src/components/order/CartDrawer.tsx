@@ -141,7 +141,7 @@ export default function CartDrawer() {
                       )}
 
                       <p className="text-sm font-bold mt-1" style={{ color: "#8b0031" }}>
-                        ${linePrice.toLocaleString()}
+                        ${linePrice.toLocaleString("es-CO")}
                       </p>
 
                       {/* Quantity controls */}
@@ -183,7 +183,7 @@ export default function CartDrawer() {
           <div className="px-6 py-4 border-t bg-white">
             <div className="flex justify-between items-center mb-4">
               <span className="font-semibold text-gray-700">{t("subtotal")}</span>
-              <span className="font-bold text-lg">${totalAmount.toLocaleString()}</span>
+              <span className="font-bold text-lg">${totalAmount.toLocaleString("es-CO")}</span>
             </div>
             <Link
               href="/pedido"

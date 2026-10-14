@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import Crumbs from "@/components/layout/Crumbs";
 import { legalDocs } from "@/content/legal";
+import { alternatesFor } from "@/lib/seo";
 
 export async function generateMetadata({
   params,
@@ -11,7 +12,12 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "legal" });
-  return { title: `${t("title")} | Crooki` };
+  const tm = await getTranslations({ locale, namespace: "meta" });
+  return {
+    title: t("title"),
+    description: tm("legal_description"),
+    alternates: alternatesFor("/legal", locale),
+  };
 }
 
 export default async function LegalIndexPage({

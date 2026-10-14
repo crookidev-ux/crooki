@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { alternatesFor } from "@/lib/seo";
 import Image from "next/image";
 import { getTranslations } from "next-intl/server";
 import { mockMerch } from "@/lib/mock-products";
@@ -31,6 +33,20 @@ async function loadMerch(): Promise<Product[]> {
   } catch {
     return mockMerch;
   }
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "meta" });
+  return {
+    title: t("merch_title"),
+    description: t("merch_description"),
+    alternates: alternatesFor("/merch", locale),
+  };
 }
 
 export default async function MerchPage({
