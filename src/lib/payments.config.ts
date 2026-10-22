@@ -42,14 +42,13 @@ export function redirectionUrl(siteUrl: string, locale: "es" | "en", orderId: st
 }
 
 export function buildBoldClientConfig(input: BoldConfigInput): BoldClientConfig {
-  return {
+  const config: BoldClientConfig = {
     orderId: input.boldOrderId,
     amount: String(input.amount),
     currency: "COP",
     apiKey: input.identityKey,
     integritySignature: integritySignature(input.boldOrderId, input.amount, "COP", input.secretKey),
     description: orderDescription(input.orderId),
-    redirectionUrl: redirectionUrl(input.siteUrl, input.locale, input.orderId),
     customerData: JSON.stringify({
       email: input.customer.email,
       fullName: input.customer.name,
@@ -57,4 +56,10 @@ export function buildBoldClientConfig(input: BoldConfigInput): BoldClientConfig 
       dialCode: "+57",
     }),
   };
+  // Bold rejects non-https redirection URLs (error BTN-001, e.g. localhost),
+  // so the key is omitted entirely unless the site is served over https.
+  if (input.siteUrl.startsWith("https://")) {
+    config.redirectionUrl = redirectionUrl(input.siteUrl, input.locale, input.orderId);
+  }
+  return config;
 }

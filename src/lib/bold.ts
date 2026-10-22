@@ -9,7 +9,8 @@ export type BoldClientConfig = {
   apiKey: string;
   integritySignature: string;
   description: string;
-  redirectionUrl: string;
+  /** Only present for an https site: Bold rejects http URLs (BTN-001). */
+  redirectionUrl?: string;
   customerData: string;
 };
 

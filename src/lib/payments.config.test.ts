@@ -71,3 +71,16 @@ test("retryBlockReason blocks orders Bold already charged", () => {
   // The stronger reasons still win.
   assert.equal(retryBlockReason({ ...ok, payment_status: "paid" }, { hasApprovedAttempt: true }), "paid");
 });
+
+test("https base → redirectionUrl present, with /en for English", () => {
+  const es = buildBoldClientConfig({ ...input, siteUrl: "https://crookibakebar.com" });
+  assert.equal(es.redirectionUrl, `https://crookibakebar.com/pedido/${input.orderId}`);
+  const en = buildBoldClientConfig({ ...input, siteUrl: "https://crookibakebar.com", locale: "en" });
+  assert.equal(en.redirectionUrl, `https://crookibakebar.com/en/pedido/${input.orderId}`);
+});
+
+test("http://localhost base → redirectionUrl key absent", () => {
+  const c = buildBoldClientConfig({ ...input, siteUrl: "http://localhost:3001" });
+  assert.equal("redirectionUrl" in c, false);
+  assert.equal(c.integritySignature.length, 64);
+});
