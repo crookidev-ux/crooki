@@ -10,6 +10,8 @@ function product(p: Partial<CatalogProduct> & { id: string }): CatalogProduct {
     price: 5000,
     available: true,
     isMerch: false,
+    category: "galletas",
+    categoryVisible: true,
     ...p,
   };
 }
@@ -19,13 +21,16 @@ function makeCatalog(): Catalog {
     product({ id: "galleta", price: 5000, name_es: "Galleta", name_en: "Cookie" }),
     product({ id: "choco", price: 6000, name_es: "Chocolate", name_en: "Chocolate EN" }),
     product({ id: "nutella", price: 7000, name_es: "Nutella ES", name_en: "Nutella EN" }),
-    product({ id: "arequipe", price: 2000, name_es: "Arequipe", name_en: "Dulce de leche" }),
-    product({ id: "fresa", price: 2000, name_es: "Fresa", name_en: "Strawberry" }),
+    product({ id: "arequipe", price: 2000, name_es: "Arequipe", name_en: "Dulce de leche", category: "salsas", categoryVisible: false }),
+    product({ id: "fresa", price: 2000, name_es: "Fresa", name_en: "Strawberry", category: "salsas", categoryVisible: false }),
+    product({ id: "galleta-agotada", available: false }),
+    product({ id: "combo-vacio", price: 15000, category: "combos" }),
     product({
       id: "combo",
       price: 15000,
       name_es: "Combo Clásico",
       name_en: "Classic Combo",
+      category: "combos",
       includes_salsa: true,
     }),
     product({
@@ -33,6 +38,7 @@ function makeCatalog(): Catalog {
       price: 30000,
       name_es: "Caja x6",
       name_en: "Box of 6",
+      category: "cajas",
       box_cookie_count: 6,
       gift_card_price: 3000,
       gift_card_cake_price: null,
@@ -42,17 +48,20 @@ function makeCatalog(): Catalog {
       price: 9000,
       name_es: "Helado",
       name_en: "Ice cream",
+      category: "helados",
       included_salsas_count: 2,
     }),
-    product({ id: "helado-extra", price: 9000, included_salsas_count: 0 }),
+    product({ id: "helado-extra", price: 9000, category: "helados", included_salsas_count: 0 }),
     product({ id: "agotado", available: false }),
-    product({ id: "camiseta", price: 50000, isMerch: true }),
+    product({ id: "camiseta", price: 50000, isMerch: true, category: "camisetas" }),
   ];
   return {
     products: new Map(products.map((p) => [p.id, p])),
     comboCookies: new Map([
       ["combo:choco", 0],
       ["combo:nutella", 2000],
+      ["combo:galleta-agotada", 0],
+      ["combo:fantasma", 0],
     ]),
     comboSalsas: new Map([
       ["combo:arequipe", 0],
@@ -413,4 +422,128 @@ test("parseCheckoutInput: notes up to 1000, city for outside zone, pickup drops 
   assert.equal(pickup.ok, true);
   if (!pickup.ok) return;
   assert.equal(pickup.value.delivery, undefined);
+});
+
+// ---------- fix round 1 (R9–R11) ----------
+
+function expectFail(r: ReturnType<typeof priceCart>, status: 400 | 409, unavailable?: string[]) {
+  assert.equal(r.ok, false);
+  if (r.ok) return;
+  assert.equal(r.status, status, r.error);
+  if (unavailable) assert.deepEqual(r.unavailable, unavailable);
+}
+
+test("R9: price <= 0 ('Consultar') is not orderable -> 409", () => {
+  const catalog = makeCatalog();
+  catalog.products.set("gratis", product({ id: "gratis", price: 0 }));
+  expectFail(priceCart(input({ items: [{ productId: "gratis", quantity: 1 }] }), catalog), 409, ["gratis"]);
+});
+
+test("R10: combo with zero junction rows always needs a selection -> 400", () => {
+  const catalog = makeCatalog();
+  expectFail(priceCart(input({ items: [{ productId: "combo-vacio", quantity: 1 }] }), catalog), 400);
+  expectFail(
+    priceCart(input({ items: [{ productId: "combo-vacio", quantity: 1, combo: { cookieId: "choco" } }] }), catalog),
+    400,
+  );
+});
+
+test("R10: box sent plain -> 400; plain product with a selection -> 400; helado with combo -> 400", () => {
+  const catalog = makeCatalog();
+  catalog.boxCookies.clear();
+  expectFail(priceCart(input({ items: [{ productId: "caja", quantity: 1 }] }), catalog), 400);
+  expectFail(
+    priceCart(input({ items: [{ productId: "galleta", quantity: 1, helado: { salsas: [] } }] }), makeCatalog()),
+    400,
+  );
+  expectFail(
+    priceCart(input({ items: [{ productId: "galleta", quantity: 1, combo: { cookieId: "choco" } }] }), makeCatalog()),
+    400,
+  );
+  expectFail(
+    priceCart(input({ items: [{ productId: "helado", quantity: 1, combo: { cookieId: "choco" } }] }), makeCatalog()),
+    400,
+  );
+});
+
+test("R11: unavailable or missing component -> 409 listing the component id", () => {
+  expectFail(
+    priceCart(
+      input({
+        items: [{ productId: "combo", quantity: 1, combo: { cookieId: "galleta-agotada", includedSalsaId: "arequipe" } }],
+      }),
+      makeCatalog(),
+    ),
+    409,
+    ["galleta-agotada"],
+  );
+  expectFail(
+    priceCart(
+      input({ items: [{ productId: "combo", quantity: 1, combo: { cookieId: "fantasma", includedSalsaId: "arequipe" } }] }),
+      makeCatalog(),
+    ),
+    409,
+    ["fantasma"],
+  );
+  const catalog = makeCatalog();
+  catalog.products.set("fresa", { ...catalog.products.get("fresa")!, available: false });
+  catalog.products.set("nutella", { ...catalog.products.get("nutella")!, available: false });
+  expectFail(
+    priceCart(
+      input({
+        items: [
+          { productId: "helado", quantity: 1, helado: { salsas: [{ salsaId: "fresa", quantity: 1 }] } },
+          {
+            productId: "caja",
+            quantity: 1,
+            box: { cookies: [{ cookieId: "choco", quantity: 5 }, { cookieId: "nutella", quantity: 1 }], giftCard: "none" },
+          },
+        ],
+      }),
+      catalog,
+    ),
+    409,
+    ["fresa", "nutella"],
+  );
+});
+
+test("R11: invalid money makes the product unavailable / the row unusable", () => {
+  const catalog = makeCatalog();
+  catalog.products.set("nan", product({ id: "nan", price: Number.NaN }));
+  catalog.products.set("neg", product({ id: "neg", price: -100 }));
+  catalog.products.set(
+    "caja-rara",
+    product({ id: "caja-rara", price: 30000, category: "cajas", gift_card_price: Number.POSITIVE_INFINITY }),
+  );
+  expectFail(
+    priceCart(
+      input({
+        items: [
+          { productId: "nan", quantity: 1 },
+          { productId: "neg", quantity: 1 },
+          { productId: "caja-rara", quantity: 1 },
+        ],
+      }),
+      catalog,
+    ),
+    409,
+    ["nan", "neg", "caja-rara"],
+  );
+  catalog.comboCookies.set("combo:choco", -5000);
+  expectFail(
+    priceCart(input({ items: [{ productId: "combo", quantity: 1, combo: { cookieId: "choco", includedSalsaId: "arequipe" } }] }), catalog),
+    400,
+  );
+});
+
+test("R11: hidden category -> 409 for top-level, but hidden components still usable", () => {
+  const catalog = makeCatalog();
+  catalog.products.set("oculto", product({ id: "oculto", categoryVisible: false }));
+  expectFail(priceCart(input({ items: [{ productId: "oculto", quantity: 1 }] }), catalog), 409, ["oculto"]);
+  // arequipe is in the hidden "salsas" category but is a valid included salsa.
+  const ok = priceCart(
+    input({ items: [{ productId: "combo", quantity: 1, combo: { cookieId: "choco", includedSalsaId: "arequipe" } }] }),
+    catalog,
+  );
+  assert.equal(ok.ok, true);
 });

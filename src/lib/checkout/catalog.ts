@@ -21,9 +21,12 @@ type ProductRow = {
 
 type JunctionRow = { parent: string; child: string; extra_price: number | string };
 
-const toInt = (v: number | string) => Math.round(Number(v));
-const toIntOrNull = (v: number | string | null | undefined) =>
-  v === null || v === undefined ? null : toInt(v);
+/** Integer pesos, or null when the value is not a finite, non-negative amount. */
+function toMoney(v: unknown): number | null {
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 ? Math.round(n) : null;
+}
 
 function unwrap<T>(res: { data: unknown; error: { message: string } | null }, what: string): T[] {
   if (res.error) throw new Error(`loadCatalog: ${what}: ${res.error.message}`);
@@ -71,7 +74,11 @@ export async function loadCatalog(
     loadJunction(supabase, "box_cookies", "box_id", "cookie_id", ids),
   ]);
   const fill = (map: Map<string, number>, rows: JunctionRow[]) => {
-    for (const r of rows) map.set(`${r.parent}:${r.child}`, toInt(r.extra_price));
+    for (const r of rows) {
+      // A row with unusable money is dropped, so choosing it fails with 400.
+      const extra = toMoney(r.extra_price);
+      if (extra !== null) map.set(`${r.parent}:${r.child}`, extra);
+    }
   };
   fill(catalog.comboCookies, comboCookies);
   fill(catalog.comboSalsas, comboSalsas);
@@ -88,31 +95,47 @@ export async function loadCatalog(
     .in("id", [...allIds]);
   const rows = unwrap<ProductRow>(productsRes, "products");
 
-  // Category kind is looked up separately (products.category is a slug, not a
-  // guaranteed foreign key, so a PostgREST embed is not relied on).
+  // Category kind/visibility is looked up separately (products.category is a
+  // slug, not a guaranteed foreign key, so a PostgREST embed is not relied on).
+  // A slug missing from `categories` is treated as hidden: the public pages
+  // only render listed categories.
   const slugs = [...new Set(rows.map((r) => r.category))];
   const merchSlugs = new Set<string>();
+  const visibleSlugs = new Set<string>();
   if (slugs.length > 0) {
-    const catRes = await supabase.from("categories").select("slug, kind").in("slug", slugs);
-    for (const c of unwrap<{ slug: string; kind: string }>(catRes, "categories")) {
+    const catRes = await supabase.from("categories").select("slug, kind, visible").in("slug", slugs);
+    for (const c of unwrap<{ slug: string; kind: string; visible?: boolean | null }>(catRes, "categories")) {
       if (c.kind === "merch") merchSlugs.add(c.slug);
+      if (c.visible !== false) visibleSlugs.add(c.slug);
     }
   }
 
   for (const r of rows) {
+    const price = toMoney(r.price);
+    const giftPrice = toMoney(r.gift_card_price);
+    const giftCakePrice = toMoney(r.gift_card_cake_price);
+    // Unusable money (non-finite or negative) makes the product unavailable.
+    const badGift = (raw: unknown, parsed: number | null) =>
+      raw !== null && raw !== undefined && parsed === null;
+    const moneyOk =
+      price !== null &&
+      !badGift(r.gift_card_price, giftPrice) &&
+      !badGift(r.gift_card_cake_price, giftCakePrice);
     const p: CatalogProduct = {
       id: r.id,
       name_es: r.name_es,
       name_en: r.name_en,
-      price: toInt(r.price),
-      available: r.available === true,
+      price: price ?? 0,
+      available: r.available === true && moneyOk,
       isMerch: merchSlugs.has(r.category),
+      category: r.category,
+      categoryVisible: visibleSlugs.has(r.category),
     };
     if (r.includes_salsa != null) p.includes_salsa = r.includes_salsa;
     if (r.box_cookie_count != null) p.box_cookie_count = r.box_cookie_count;
     if (r.included_salsas_count != null) p.included_salsas_count = r.included_salsas_count;
-    p.gift_card_price = toIntOrNull(r.gift_card_price);
-    p.gift_card_cake_price = toIntOrNull(r.gift_card_cake_price);
+    p.gift_card_price = giftPrice;
+    p.gift_card_cake_price = giftCakePrice;
     catalog.products.set(p.id, p);
   }
   return catalog;
