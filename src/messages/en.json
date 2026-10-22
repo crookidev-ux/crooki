@@ -144,6 +144,7 @@
     "retry_error": "We couldn't open the payment. Please try again.",
     "pay_unavailable": "Online payment is not available right now",
     "pay_qr": "Pay by QR (WhatsApp)",
+    "qr_switch_error": "We couldn't open WhatsApp. Please try again.",
     "summary": "Summary",
     "delivery_fee": "Delivery",
     "total": "Total",

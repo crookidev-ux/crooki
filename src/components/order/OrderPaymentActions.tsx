@@ -2,7 +2,9 @@
 
 // «Intentar de nuevo» on the order page: asks the server for a fresh payment
 // attempt (new bold_order_id) and reopens Bold's checkout with it. The
-// secondary «Pagar por QR (WhatsApp)» link sends the order to the shop.
+// secondary «Pagar por QR (WhatsApp)» first switches the order to QR payment
+// on the server (so the admin does not show it as an unpaid Bold order), then
+// sends the order to the shop over WhatsApp.
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -17,22 +19,21 @@ type Props = {
   locale: "es" | "en";
   /** Online payment configured and the order can still be paid. */
   canRetry: boolean;
-  whatsappUrl: string;
 };
 
-export default function OrderPaymentActions({ orderId, locale, canRetry, whatsappUrl }: Props) {
+export default function OrderPaymentActions({ orderId, locale, canRetry }: Props) {
   const t = useTranslations("confirmation");
   const router = useRouter();
   const bold = useBoldCheckout(canRetry);
   // Synchronous double-tap guard (render state lags behind fast taps).
   const inFlight = useRef(false);
-  const [pending, setPending] = useState(false);
+  const [pending, setPending] = useState<"retry" | "qr" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const retry = async () => {
     if (inFlight.current || !bold.ready) return;
     inFlight.current = true;
-    setPending(true);
+    setPending("retry");
     setError(null);
     try {
       const res = await fetch("/api/checkout/retry", {
@@ -56,7 +57,49 @@ export default function OrderPaymentActions({ orderId, locale, canRetry, whatsap
       setError(t("retry_error"));
     } finally {
       inFlight.current = false;
-      setPending(false);
+      setPending(null);
+    }
+  };
+
+  const payByQr = async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setPending("qr");
+    setError(null);
+    // Opened synchronously inside the tap so pop-up blockers allow it; it is
+    // pointed at WhatsApp once the server has switched the order.
+    const win = window.open("", "_blank");
+    try {
+      const res = await fetch("/api/checkout/switch-to-qr", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { whatsappUrl?: string };
+      if (res.ok && data.whatsappUrl) {
+        if (win) {
+          win.opener = null;
+          win.location.href = data.whatsappUrl;
+        } else {
+          window.location.href = data.whatsappUrl;
+        }
+        router.refresh();
+        return;
+      }
+      win?.close();
+      if (res.status === 409) {
+        // Paid, closed or under review meanwhile: show the current state.
+        router.refresh();
+        return;
+      }
+      setError(t("qr_switch_error"));
+    } catch (err) {
+      console.error(err);
+      win?.close();
+      setError(t("qr_switch_error"));
+    } finally {
+      inFlight.current = false;
+      setPending(null);
     }
   };
 
@@ -68,17 +111,17 @@ export default function OrderPaymentActions({ orderId, locale, canRetry, whatsap
         <button
           type="button"
           onClick={retry}
-          disabled={pending || !bold.ready}
-          aria-busy={pending}
+          disabled={pending !== null || !bold.ready}
+          aria-busy={pending === "retry"}
           className="flex items-center justify-center gap-3 text-white font-bold py-4 rounded-full transition-opacity hover:opacity-90 text-lg disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8b0031]"
           style={{ backgroundColor: BRAND }}
         >
-          {pending || (!bold.ready && !bold.failed) ? (
+          {pending === "retry" || (!bold.ready && !bold.failed) ? (
             <Loader2 aria-hidden="true" className="w-5 h-5 animate-spin" />
           ) : (
             <CreditCard aria-hidden="true" className="w-5 h-5" />
           )}
-          {pending ? t("retrying") : t("retry")}
+          {pending === "retry" ? t("retrying") : t("retry")}
         </button>
       )}
       {(error || unavailable) && (
@@ -86,16 +129,21 @@ export default function OrderPaymentActions({ orderId, locale, canRetry, whatsap
           {error ?? t("pay_unavailable")}
         </p>
       )}
-      <a
-        href={whatsappUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center justify-center gap-2 font-semibold py-4 rounded-full border-2 transition-colors hover:bg-[#8b0031]/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8b0031]"
+      <button
+        type="button"
+        onClick={payByQr}
+        disabled={pending !== null}
+        aria-busy={pending === "qr"}
+        className="flex items-center justify-center gap-2 font-semibold py-4 rounded-full border-2 transition-colors hover:bg-[#8b0031]/5 disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8b0031]"
         style={{ borderColor: BRAND, color: BRAND }}
       >
-        <QrCode aria-hidden="true" className="w-5 h-5" />
+        {pending === "qr" ? (
+          <Loader2 aria-hidden="true" className="w-5 h-5 animate-spin" />
+        ) : (
+          <QrCode aria-hidden="true" className="w-5 h-5" />
+        )}
         {t("pay_qr")}
-      </a>
+      </button>
     </div>
   );
 }

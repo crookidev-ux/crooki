@@ -237,7 +237,6 @@ export default async function OrderConfirmationPage({
               orderId={order.id}
               locale={locale === "en" ? "en" : "es"}
               canRetry={canRetry}
-              whatsappUrl={whatsappUrl}
             />
           </div>
         )}

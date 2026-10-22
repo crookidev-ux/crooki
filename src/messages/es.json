@@ -144,6 +144,7 @@
     "retry_error": "No pudimos abrir el pago. Inténtalo de nuevo.",
     "pay_unavailable": "El pago en línea no está disponible en este momento",
     "pay_qr": "Pagar por QR (WhatsApp)",
+    "qr_switch_error": "No pudimos abrir WhatsApp. Inténtalo de nuevo.",
     "summary": "Resumen",
     "delivery_fee": "Domicilio",
     "total": "Total",

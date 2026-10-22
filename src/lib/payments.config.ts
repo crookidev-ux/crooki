@@ -2,6 +2,7 @@
 // The secret key is only used to compute the integrity signature; it is never
 // part of the returned object.
 import { integritySignature } from "./bold.ts";
+import { AMOUNT_MISMATCH_NOTE } from "./payments.confirm.ts";
 import type { BoldClientConfig } from "@/lib/bold";
 
 export type BoldConfigInput = {
@@ -32,6 +33,31 @@ export function retryBlockReason(
   return null;
 }
 
+/**
+ * Why an order cannot be switched to «Pagar por QR», or null when it can:
+ * exactly the orders that could get a new online attempt (an unpaid Bold
+ * order, still open, with no money taken by Bold), so a switch never hides a
+ * payment the shop must review.
+ */
+export function qrSwitchBlockReason(
+  order: { payment_method: string; payment_status: string; status: string; notes: string | null },
+  hasApprovedAttempt: boolean,
+): ReturnType<typeof retryBlockReason> {
+  return retryBlockReason(order, {
+    hasApprovedAttempt,
+    amountMismatch: (order.notes ?? "").includes(AMOUNT_MISMATCH_NOTE),
+  });
+}
+
+/**
+ * Phone for Bold's customerData: digits only, without the Colombian country
+ * code when what remains is a 10-digit number (`dialCode` carries the +57).
+ */
+export function boldCustomerPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  return digits.length === 12 && digits.startsWith("57") ? digits.slice(2) : digits;
+}
+
 export function orderDescription(orderId: string): string {
   return `Pedido Crooki #${orderId.slice(0, 8).toUpperCase()}`;
 }
@@ -52,7 +78,7 @@ export function buildBoldClientConfig(input: BoldConfigInput): BoldClientConfig 
     customerData: JSON.stringify({
       email: input.customer.email,
       fullName: input.customer.name,
-      phone: input.customer.phone,
+      phone: boldCustomerPhone(input.customer.phone),
       dialCode: "+57",
     }),
   };
