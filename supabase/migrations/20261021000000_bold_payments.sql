@@ -9,7 +9,9 @@
 -- `customer_address` stays TEXT NOT NULL (see 20260331000000_initial.sql);
 -- non-delivery orders store an empty string there.
 --
--- Payment writes are done only by the server with the service role.
+-- Payment writes are done only by the server with the service role. Supabase
+-- default privileges grant EXECUTE/ALL to anon and authenticated on new
+-- objects, so both the function and the table explicitly REVOKE from them.
 
 -- ── 1. New columns on orders ──────────────────────────────────────────────
 ALTER TABLE orders
@@ -45,6 +47,9 @@ CREATE INDEX IF NOT EXISTS idx_payment_attempts_order_id ON payment_attempts(ord
 -- bypasses RLS.
 ALTER TABLE payment_attempts ENABLE ROW LEVEL SECURITY;
 
+-- Defense in depth: drop the default grants Supabase gives anon/authenticated.
+REVOKE ALL ON TABLE public.payment_attempts FROM anon, authenticated;
+
 -- ── 3. create_order_v2 ────────────────────────────────────────────────────
 -- Server-only order creation (service role). Atomic: order row + items in a
 -- single transaction.
@@ -56,7 +61,9 @@ ALTER TABLE payment_attempts ENABLE ROW LEVEL SECURITY;
 --   [ { "product_id": "uuid"|null, "product_name": "text",
 --       "quantity": int, "unit_price": numeric }, ... ]
 --
--- Invalid fulfillment / payment values are rejected by the table CHECKs.
+-- Invalid fulfillment / payment_method values are rejected by the table CHECKs.
+-- payment_status may only be 'unpaid' or 'awaiting_payment' here; 'paid' and
+-- 'rejected' are set exclusively by the webhook / confirmation code.
 
 CREATE OR REPLACE FUNCTION public.create_order_v2(
   p_order jsonb,
@@ -86,6 +93,10 @@ BEGIN
 
   v_fee := coalesce((p_order->>'delivery_fee')::numeric, 0);
   IF v_fee < 0 THEN RAISE EXCEPTION 'invalid delivery_fee'; END IF;
+
+  IF coalesce(nullif(p_order->>'payment_status', ''), 'unpaid') NOT IN ('unpaid', 'awaiting_payment') THEN
+    RAISE EXCEPTION 'invalid payment_status';
+  END IF;
 
   IF p_items IS NULL OR jsonb_typeof(p_items) <> 'array' THEN
     RAISE EXCEPTION 'items must be a JSON array';
@@ -131,8 +142,9 @@ BEGIN
 END;
 $$;
 
--- Server only: never callable by anon / authenticated.
-REVOKE ALL ON FUNCTION public.create_order_v2(jsonb, jsonb) FROM PUBLIC;
+-- Server only: never callable by anon / authenticated. Supabase's default
+-- privileges grant them EXECUTE directly, so revoke from them by name too.
+REVOKE ALL ON FUNCTION public.create_order_v2(jsonb, jsonb) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.create_order_v2(jsonb, jsonb) TO service_role;
 
 COMMENT ON FUNCTION public.create_order_v2(jsonb, jsonb) IS
