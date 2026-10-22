@@ -1,3 +1,5 @@
+import { DOUBLE_CHARGE_NOTE, AMOUNT_MISMATCH_NOTE } from "./payments.confirm.ts";
+
 // Lógica pura de la lista de pedidos del admin (sin React) para poder probarla.
 
 export type AdminPayKey = "paid" | "awaiting" | "rejected" | "qr";
@@ -41,13 +43,13 @@ export function sortOrdersForAdmin<T extends OrderLike>(orders: T[]): T[] {
     .map((x) => x.o);
 }
 
-const WARNING_MARK = "⚠";
+const KNOWN_WARNINGS = [DOUBLE_CHARGE_NOTE, AMOUNT_MISMATCH_NOTE];
 
-/** Líneas de las notas que son alertas (cobro doble, monto distinto) para mostrarlas destacadas. */
+/** Líneas de las notas que son alertas del sistema (coincidencia exacta; el texto del cliente no cuenta) para mostrarlas destacadas. */
 export function warningLines(notes: string | null | undefined): string[] {
   if (!notes) return [];
   return notes
     .split("\n")
     .map((l) => l.trim())
-    .filter((l) => l.startsWith(WARNING_MARK));
+    .filter((l) => KNOWN_WARNINGS.includes(l));
 }

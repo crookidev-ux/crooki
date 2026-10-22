@@ -7,6 +7,7 @@ import {
   sortOrdersForAdmin,
   warningLines,
 } from "./admin-orders.ts";
+import { DOUBLE_CHARGE_NOTE } from "./payments.confirm.ts";
 
 const o = (status: string, payment_method: string | null, payment_status: string | null) => ({
   status,
@@ -40,6 +41,12 @@ test("sortOrdersForAdmin sinks unpaid bold and keeps order otherwise", () => {
     { id: 4, ...o("pending", "bold", "rejected") },
   ];
   assert.deepEqual(sortOrdersForAdmin(list).map((x) => x.id), [2, 3, 1, 4]);
+});
+
+test("warningLines ignores customer-typed lookalikes", () => {
+  assert.deepEqual(warningLines("⚠ sin cebolla"), []);
+  assert.deepEqual(warningLines(`⚠ foo
+${DOUBLE_CHARGE_NOTE}`), [DOUBLE_CHARGE_NOTE]);
 });
 
 test("warningLines extracts alert lines only", () => {

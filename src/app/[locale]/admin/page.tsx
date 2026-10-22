@@ -253,7 +253,7 @@ export default async function AdminDashboardPage({
                     <th className="px-6 py-3 font-semibold text-gray-600">Cliente</th>
                     <th className="px-6 py-3 font-semibold text-gray-600">Total</th>
                     <th className="px-6 py-3 font-semibold text-gray-600">Estado</th>
-                    <th className="px-6 py-3 font-semibold text-gray-600">{t("col_payment")}</th>
+                    <th className="px-6 py-3 font-semibold text-gray-600 hidden sm:table-cell">{t("col_payment")}</th>
                     <th className="px-6 py-3 font-semibold text-gray-600">{t("col_delivery")}</th>
                     <th className="px-6 py-3 font-semibold text-gray-600">Fecha</th>
                   </tr>
@@ -266,16 +266,23 @@ export default async function AdminDashboardPage({
                     return (
                     <tr
                       key={order.id}
-                      className={`hover:bg-gray-50 transition-colors ${dimmed ? "opacity-50" : ""} ${
+                      className={`hover:bg-gray-50 transition-colors ${
                         countsAsPending(order) ? "bg-yellow-50/60" : ""
                       }`}
                     >
-                      <td className="px-6 py-4 font-mono text-xs text-gray-500">
+                      <td className={`px-6 py-4 font-mono text-xs text-gray-500 ${dimmed ? "opacity-50" : ""}`}>
                         {order.id.slice(0, 8).toUpperCase()}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="font-medium">{order.customer_name}</div>
-                        <div className="text-gray-400 text-xs">{order.customer_phone}</div>
+                        <div className={dimmed ? "opacity-50" : ""}>
+                          <div className="font-medium">{order.customer_name}</div>
+                          <div className="text-gray-400 text-xs">{order.customer_phone}</div>
+                          <span
+                            className={`sm:hidden mt-1 inline-block px-2.5 py-1 rounded-full text-xs font-semibold ${payColors[payKey]}`}
+                          >
+                            {payLabels[payKey]}
+                          </span>
+                        </div>
                         {warnings.map((w) => (
                           <div
                             key={w}
@@ -286,10 +293,10 @@ export default async function AdminDashboardPage({
                           </div>
                         ))}
                       </td>
-                      <td className="px-6 py-4 font-bold">
+                      <td className={`px-6 py-4 font-bold ${dimmed ? "opacity-50" : ""}`}>
                         ${order.total.toLocaleString("es-CO")}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className={`px-6 py-4 ${dimmed ? "opacity-50" : ""}`}>
                         <span
                           className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
                             statusColors[order.status] ?? "bg-gray-100 text-gray-600"
@@ -298,14 +305,14 @@ export default async function AdminDashboardPage({
                           {statusLabels[order.status] ?? order.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className={`px-6 py-4 hidden sm:table-cell ${dimmed ? "opacity-50" : ""}`}>
                         <span
                           className={`px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${payColors[payKey]}`}
                         >
                           {payLabels[payKey]}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-xs text-gray-600">
+                      <td className={`px-6 py-4 text-xs text-gray-600 ${dimmed ? "opacity-50" : ""}`}>
                         <div className="font-medium">
                           {fulfillmentLabels[order.fulfillment ?? ""] ?? "-"}
                         </div>
@@ -318,7 +325,7 @@ export default async function AdminDashboardPage({
                           </div>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-gray-500">
+                      <td className={`px-6 py-4 text-gray-500 ${dimmed ? "opacity-50" : ""}`}>
                         {new Date(order.created_at).toLocaleDateString("es-CO")}
                       </td>
                     </tr>
