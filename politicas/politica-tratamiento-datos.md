@@ -1,6 +1,6 @@
 # Política de Tratamiento de Datos Personales
 
-**Crooki Bake Bar** · Versión 1.0 · Vigente desde: 7 de octubre de 2026.
+**Crooki Bake Bar** · Versión 1.0 · Vigente desde: 22 de octubre de 2026.
 
 Esta política explica cómo Crooki recolecta, usa, guarda y protege los datos personales de sus clientes, incluidos quienes hacen pedidos en www.crookibakebar.com y quienes se inscriben en el Club Crooki, y cómo pueden ejercer sus derechos. Se expide conforme a la Ley 1581 de 2012, el Decreto 1074 de 2015 (Capítulo 25) y la Ley 2300 de 2023.
 
@@ -17,9 +17,9 @@ Esta política explica cómo Crooki recolecta, usa, guarda y protege los datos p
 - **Identificación y contacto:** nombre, número de celular y, de forma opcional, correo electrónico.
 - **Fecha de cumpleaños** (día y mes), opcional, para el beneficio de cumpleaños.
 - **Historial en el Club:** fechas y valores de compra, Bonus acumulados, premios canjeados y mensajes recibidos.
-- **Pedidos en el sitio web:** nombre, correo electrónico, teléfono / WhatsApp, dirección de entrega, teléfono de quien recibe el pedido, comentarios del pedido y los productos y valores pedidos.
+- **Pedidos en el sitio web:** nombre, correo electrónico, teléfono / WhatsApp, forma de entrega (domicilio, recoger o comer en el local), barrio y dirección de entrega, teléfono de quien recibe el pedido, comentarios del pedido y los productos y valores pedidos.
 
-Crooki no solicita datos sensibles (salud, religión, orientación, datos biométricos, entre otros) ni datos financieros a través del Club ni del sitio web. Los pagos no se procesan en el sitio.
+Crooki no solicita datos sensibles (salud, religión, orientación, datos biométricos, entre otros) a través del Club ni del sitio web. **Los pagos en línea los procesa directamente Bold** (pasarela de pagos de Bold.co): los datos de tu tarjeta, cuenta o medio de pago se ingresan en la ventana segura de Bold y **Crooki no los recibe ni los guarda**. Crooki solo conserva el estado del pago (aprobado o rechazado), el valor y la referencia de la transacción.
 
 ## 3. Finalidades
 
@@ -72,6 +72,8 @@ Para dejar de recibir mensajes basta con responder **BAJA** al WhatsApp del Club
 Para operar el Club, Crooki usa la plataforma **Novu App** y el servicio de **WhatsApp Business**, que tratan los datos por cuenta de Crooki como encargados. Sus servidores pueden estar fuera de Colombia; en ese caso los datos se transmiten bajo un contrato o cláusulas que obligan al encargado a protegerlos con los estándares de la ley colombiana y a usarlos solo para las finalidades de esta política. La política de privacidad de Novu App puede consultarse en https://www.novuapp.ai/privacidad.
 
 Los pedidos del sitio web se guardan en **Supabase**, el servicio de base de datos del sitio, y el sitio se aloja en **Vercel**. Ambos actúan como encargados, pueden tener servidores fuera de Colombia y están sujetos a las mismas condiciones descritas en el párrafo anterior.
+
+Para los pagos en línea, Crooki usa **Bold** (Bold.co), que actúa como pasarela de pagos según su propia política de privacidad: https://bold.co/legal/privacidad-datos-personales. Para enviar al equipo de Crooki el aviso de cada pedido pagado, el sitio usa **Resend**, un servicio de correo que actúa como encargado en las mismas condiciones descritas arriba.
 
 El acceso interno a la base de datos se limita al consultor y a las socias. El personal de caja solo registra Bonus y canjes.
 

@@ -18,7 +18,7 @@ export const legalDocs: LegalDoc[] = [
     slug: "politica-de-datos",
     es: {
       title: "Política de Tratamiento de Datos Personales",
-      body: `**Crooki Bake Bar** · Versión 1.0 · Vigente desde: 7 de octubre de 2026.
+      body: `**Crooki Bake Bar** · Versión 1.0 · Vigente desde: 22 de octubre de 2026.
 
 Esta política explica cómo Crooki recolecta, usa, guarda y protege los datos personales de sus clientes, incluidos quienes hacen pedidos en www.crookibakebar.com y quienes se inscriben en el Club Crooki, y cómo pueden ejercer sus derechos. Se expide conforme a la Ley 1581 de 2012, el Decreto 1074 de 2015 (Capítulo 25) y la Ley 2300 de 2023.
 
@@ -35,9 +35,9 @@ Esta política explica cómo Crooki recolecta, usa, guarda y protege los datos p
 - **Identificación y contacto:** nombre, número de celular y, de forma opcional, correo electrónico.
 - **Fecha de cumpleaños** (día y mes), opcional, para el beneficio de cumpleaños.
 - **Historial en el Club:** fechas y valores de compra, Bonus acumulados, premios canjeados y mensajes recibidos.
-- **Pedidos en el sitio web:** nombre, correo electrónico, teléfono / WhatsApp, dirección de entrega, teléfono de quien recibe el pedido, comentarios del pedido y los productos y valores pedidos.
+- **Pedidos en el sitio web:** nombre, correo electrónico, teléfono / WhatsApp, forma de entrega (domicilio, recoger o comer en el local), barrio y dirección de entrega, teléfono de quien recibe el pedido, comentarios del pedido y los productos y valores pedidos.
 
-Crooki no solicita datos sensibles (salud, religión, orientación, datos biométricos, entre otros) ni datos financieros a través del Club ni del sitio web. Los pagos no se procesan en el sitio.
+Crooki no solicita datos sensibles (salud, religión, orientación, datos biométricos, entre otros) a través del Club ni del sitio web. **Los pagos en línea los procesa directamente Bold** (pasarela de pagos de Bold.co): los datos de tu tarjeta, cuenta o medio de pago se ingresan en la ventana segura de Bold y **Crooki no los recibe ni los guarda**. Crooki solo conserva el estado del pago (aprobado o rechazado), el valor y la referencia de la transacción.
 
 ## 3. Finalidades
 
@@ -91,6 +91,8 @@ Para operar el Club, Crooki usa la plataforma **Novu App** y el servicio de **Wh
 
 Los pedidos del sitio web se guardan en **Supabase**, el servicio de base de datos del sitio, y el sitio se aloja en **Vercel**. Ambos actúan como encargados, pueden tener servidores fuera de Colombia y están sujetos a las mismas condiciones descritas en el párrafo anterior.
 
+Para los pagos en línea, Crooki usa **Bold** (Bold.co), que actúa como pasarela de pagos según su propia política de privacidad: https://bold.co/legal/privacidad-datos-personales. Para enviar al equipo de Crooki el aviso de cada pedido pagado, el sitio usa **Resend**, un servicio de correo que actúa como encargado en las mismas condiciones descritas arriba.
+
 El acceso interno a la base de datos se limita al consultor y a las socias. El personal de caja solo registra Bonus y canjes.
 
 ## 9. Seguridad y conservación
@@ -111,7 +113,7 @@ Cualquier cambio importante se comunicará a los socios del Club por los canales
     },
     en: {
       title: "Personal Data Processing Policy",
-      body: `**Crooki Bake Bar** · Version 1.0 · Effective: October 7, 2026.
+      body: `**Crooki Bake Bar** · Version 1.0 · Effective: October 22, 2026.
 
 This policy explains how Crooki collects, uses, stores and protects the personal data of its customers, including those who order on www.crookibakebar.com and Club Crooki members, and how they can exercise their rights. It is issued under Law 1581 of 2012, Decree 1074 of 2015 (Chapter 25) and Law 2300 of 2023.
 
@@ -128,9 +130,9 @@ This policy explains how Crooki collects, uses, stores and protects the personal
 - **Identification and contact:** name, mobile number and, optionally, email address.
 - **Birthday** (day and month), optional, for the birthday benefit.
 - **Club history:** purchase dates and amounts, Bonus earned, rewards redeemed and messages received.
-- **Website orders:** name, email, phone / WhatsApp, delivery address, phone number of the person receiving the order, order notes and the products and amounts ordered.
+- **Website orders:** name, email, phone / WhatsApp, delivery method (delivery, pickup or dine-in), neighborhood and delivery address, phone number of the person receiving the order, order notes and the products and amounts ordered.
 
-Crooki does not request sensitive data (health, religion, orientation, biometric data, among others) or financial data through the Club or the website. Payments are not processed on the site.
+Crooki does not request sensitive data (health, religion, orientation, biometric data, among others) through the Club or the website. **Online payments are processed directly by Bold** (the Bold.co payment gateway): your card, account or payment method details are entered in Bold's secure window and **Crooki does not receive or store them**. Crooki only keeps the payment status (approved or declined), the amount and the transaction reference.
 
 ## 3. Purposes
 
@@ -184,6 +186,8 @@ To run the Club, Crooki uses the **Novu App** platform and the **WhatsApp Busine
 
 Website orders are stored in **Supabase**, the site's database service, and the site is hosted on **Vercel**. Both act as processors, may have servers outside Colombia and are subject to the same conditions described in the previous paragraph.
 
+For online payments, Crooki uses **Bold** (Bold.co), which acts as a payment gateway under its own privacy policy: https://bold.co/legal/privacidad-datos-personales. To send the Crooki team the notice of each paid order, the site uses **Resend**, an email service that acts as a processor under the same conditions described above.
+
 Internal access to the database is limited to the consultant and the partners. Checkout staff only record Bonus and redemptions.
 
 ## 9. Security and retention
@@ -207,7 +211,7 @@ Any significant change will be communicated to Club members through the authoriz
     slug: "politica-de-cookies",
     es: {
       title: "Política de Cookies",
-      body: `**Crooki Bake Bar** · Versión 1.0 · Vigente desde: 7 de octubre de 2026.
+      body: `**Crooki Bake Bar** · Versión 1.0 · Vigente desde: 22 de octubre de 2026.
 
 Esta política explica qué son las cookies, cuáles usa www.crookibakebar.com y cómo puedes controlarlas. Complementa nuestra [Política de Tratamiento de Datos Personales](/legal/politica-de-datos), conforme a la Ley 1581 de 2012.
 
@@ -235,6 +239,8 @@ El sitio tiene enlaces a WhatsApp, Instagram, TikTok y Google Maps. Al abrirlos 
 - Meta (WhatsApp e Instagram): https://www.facebook.com/privacy/policy
 - TikTok: https://www.tiktok.com/legal/privacy-policy
 
+Al pagar en línea se abre la ventana de pago de **Bold**, que puede usar sus propias cookies según su política: https://bold.co/legal/privacidad-datos-personales
+
 ## 4. Cómo controlar las cookies
 
 Puedes borrar o bloquear las cookies y el almacenamiento local desde la configuración de Chrome, Safari, Firefox o Edge. Si lo haces, el sitio puede olvidar tu idioma o los productos de tu carrito.
@@ -253,7 +259,7 @@ Si en el futuro empezamos a usar cookies analíticas o publicitarias, actualizar
     },
     en: {
       title: "Cookie Policy",
-      body: `**Crooki Bake Bar** · Version 1.0 · Effective: October 7, 2026.
+      body: `**Crooki Bake Bar** · Version 1.0 · Effective: October 22, 2026.
 
 This policy explains what cookies are, which ones www.crookibakebar.com uses and how you can control them. It complements our [Personal Data Processing Policy](/legal/politica-de-datos), under Law 1581 of 2012.
 
@@ -280,6 +286,8 @@ The site links to WhatsApp, Instagram, TikTok and Google Maps. When you open the
 - Google: https://policies.google.com/privacy
 - Meta (WhatsApp and Instagram): https://www.facebook.com/privacy/policy
 - TikTok: https://www.tiktok.com/legal/privacy-policy
+
+When you pay online, the **Bold** payment window opens, and it may use its own cookies under its own policy: https://bold.co/legal/privacidad-datos-personales
 
 ## 4. How to control cookies
 

@@ -1,6 +1,6 @@
 # Política de Cookies
 
-**Crooki Bake Bar** · Versión 1.0 · Vigente desde: 7 de octubre de 2026.
+**Crooki Bake Bar** · Versión 1.0 · Vigente desde: 22 de octubre de 2026.
 
 Esta política explica qué son las cookies, cuáles usa www.crookibakebar.com y cómo puedes controlarlas. Complementa nuestra [Política de Tratamiento de Datos Personales](/legal/politica-de-datos), conforme a la Ley 1581 de 2012.
 
@@ -27,6 +27,8 @@ El sitio tiene enlaces a WhatsApp, Instagram, TikTok y Google Maps. Al abrirlos 
 - Google: https://policies.google.com/privacy
 - Meta (WhatsApp e Instagram): https://www.facebook.com/privacy/policy
 - TikTok: https://www.tiktok.com/legal/privacy-policy
+
+Al pagar en línea se abre la ventana de pago de **Bold**, que puede usar sus propias cookies según su política: https://bold.co/legal/privacidad-datos-personales
 
 ## 4. Cómo controlar las cookies
 
