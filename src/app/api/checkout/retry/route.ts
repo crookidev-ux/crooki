@@ -1,6 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import { BOLD_MIN_AMOUNT, isBoldConfigured } from "@/lib/bold";
-import { createAttempt, OrderNotPayableError } from "@/lib/payments";
+import { AMOUNT_MISMATCH_NOTE, createAttempt, OrderNotPayableError } from "@/lib/payments";
 import { retryBlockReason } from "@/lib/payments.config";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -17,6 +17,7 @@ type OrderRow = {
   payment_method: string;
   payment_status: string;
   status: string;
+  notes: string | null;
 };
 
 export async function POST(request: Request) {
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
     const supabase = createServiceClient();
     const { data, error: dbError } = await supabase
       .from("orders")
-      .select("id, total, customer_name, customer_email, customer_phone, payment_method, payment_status, status")
+      .select("id, total, customer_name, customer_email, customer_phone, payment_method, payment_status, status, notes")
       .eq("id", orderId)
       .maybeSingle();
     if (dbError) {
@@ -51,7 +52,20 @@ export async function POST(request: Request) {
     }
     const order = data as OrderRow | null;
     if (!order) return error(404, "Order not found");
-    if (retryBlockReason(order)) return error(409, "This order cannot be paid online");
+    const approved = await supabase
+      .from("payment_attempts")
+      .select("id", { count: "exact", head: true })
+      .eq("order_id", order.id)
+      .eq("status", "approved");
+    if (approved.error) {
+      console.error("[checkout/retry] load attempts failed", approved.error);
+      return error(500, "Could not start the payment");
+    }
+    const block = retryBlockReason(order, {
+      hasApprovedAttempt: (approved.count ?? 0) > 0,
+      amountMismatch: (order.notes ?? "").includes(AMOUNT_MISMATCH_NOTE),
+    });
+    if (block) return error(409, "This order cannot be paid online");
 
     const total = Math.round(Number(order.total));
     if (!Number.isFinite(total) || total < BOLD_MIN_AMOUNT) {

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { Link } from "@/i18n/navigation";
+import { Link, getPathname } from "@/i18n/navigation";
 import {
   CheckCircle2,
   Package,
@@ -83,7 +83,8 @@ export default async function OrderConfirmationPage({
     const latest = attempts[0];
     // Fallback for a late webhook: ask Bold about the latest attempt. Any
     // failure here is logged and the page shows what the database says.
-    if (order.payment_status !== "paid" && latest) {
+    // Only an attempt still `created` can change; final ones need no Bold call.
+    if (order.payment_status !== "paid" && latest?.status === "created") {
       try {
         const status = await fetchBoldStatus(latest.bold_order_id);
         if (status?.status === "APPROVED") {
@@ -136,6 +137,7 @@ export default async function OrderConfirmationPage({
     total: Number(order.total),
     delivery_fee: Number(order.delivery_fee) || 0,
     bold_payment_id: paymentId,
+    payment_review: view === "review",
   });
 
   const total = Number(order.total);
@@ -143,10 +145,16 @@ export default async function OrderConfirmationPage({
   const notes = customerNotes(order.notes);
   const isDelivery = order.fulfillment === "delivery";
   const fulfillmentLabel = t(`fulfillment_${order.fulfillment ?? "delivery"}`);
-  const reloadHref = `/pedido/${order.id}?${new URLSearchParams(
+  // Plain <a> (full page load) so the reload surely refetches from the server.
+  const reloadHref = `${getPathname({ href: `/pedido/${order.id}`, locale })}?${new URLSearchParams(
     Object.entries(query).flatMap(([k, v]) => (v === undefined ? [] : [[k, first(v) ?? ""]])),
   ).toString()}`;
-  const canRetry = isBoldConfigured() && retryBlockReason(order) === null;
+  const canRetry =
+    isBoldConfigured() &&
+    retryBlockReason(order, {
+      hasApprovedAttempt: attempts.some((a) => a.status === "approved"),
+      amountMismatch: Boolean(order.notes?.includes(AMOUNT_MISMATCH_NOTE)),
+    }) === null;
 
   const header = {
     paid: { Icon: CheckCircle2, title: t("paid_title"), body: t("paid_body") },
@@ -200,14 +208,14 @@ export default async function OrderConfirmationPage({
         )}
 
         {view === "confirming" && (
-          <Link
+          <a
             href={reloadHref}
             className="flex items-center justify-center gap-2 text-white font-bold py-4 rounded-full transition-opacity hover:opacity-90 text-lg mb-6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8b0031]"
             style={{ backgroundColor: BRAND }}
           >
             <RefreshCw aria-hidden="true" className="w-5 h-5" />
             {t("reload")}
-          </Link>
+          </a>
         )}
 
         {view === "review" && (

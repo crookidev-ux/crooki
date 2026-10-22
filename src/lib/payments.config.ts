@@ -17,16 +17,18 @@ export type BoldConfigInput = {
 
 /**
  * Why an order cannot get a new online payment attempt, or null when it can:
- * only Bold orders that are not paid and not cancelled/delivered.
+ * only Bold orders that are not paid and not cancelled/delivered. `review`:
+ * Bold already took money for it (an approved attempt, or an approval with a
+ * different amount flagged in the notes), so another charge could double it.
  */
-export function retryBlockReason(order: {
-  payment_method: string;
-  payment_status: string;
-  status: string;
-}): "not_bold" | "paid" | "closed" | null {
+export function retryBlockReason(
+  order: { payment_method: string; payment_status: string; status: string },
+  payments: { hasApprovedAttempt?: boolean; amountMismatch?: boolean } = {},
+): "not_bold" | "paid" | "closed" | "review" | null {
   if (order.payment_method !== "bold") return "not_bold";
   if (order.payment_status === "paid") return "paid";
   if (order.status === "cancelled" || order.status === "delivered") return "closed";
+  if (payments.hasApprovedAttempt || payments.amountMismatch) return "review";
   return null;
 }
 

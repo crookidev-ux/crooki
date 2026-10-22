@@ -61,3 +61,13 @@ test("retryBlockReason allows only unpaid, open Bold orders", () => {
   assert.equal(retryBlockReason({ ...ok, status: "cancelled" }), "closed");
   assert.equal(retryBlockReason({ ...ok, status: "delivered" }), "closed");
 });
+
+test("retryBlockReason blocks orders Bold already charged", () => {
+  const ok = { payment_method: "bold", payment_status: "awaiting_payment", status: "pending" };
+  assert.equal(retryBlockReason(ok, { hasApprovedAttempt: false, amountMismatch: false }), null);
+  assert.equal(retryBlockReason(ok, { hasApprovedAttempt: true }), "review");
+  assert.equal(retryBlockReason(ok, { amountMismatch: true }), "review");
+  assert.equal(retryBlockReason({ ...ok, payment_status: "rejected" }, { hasApprovedAttempt: true }), "review");
+  // The stronger reasons still win.
+  assert.equal(retryBlockReason({ ...ok, payment_status: "paid" }, { hasApprovedAttempt: true }), "paid");
+});

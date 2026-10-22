@@ -63,6 +63,14 @@ test("paid order carries the Bold reference", () => {
   assert.ok(noRef.includes("✅ *Pagado en línea*"));
 });
 
+test("an order under payment review is flagged for the shop", () => {
+  assert.ok(lines({ ...delivery, payment_review: true }).includes("⚠ *Pago por revisar*"));
+  assert.ok(!lines(delivery).some((x) => x.includes("Pago por revisar")));
+  // A paid order is never "por revisar".
+  const paid = lines({ ...delivery, payment_status: "paid", payment_review: true });
+  assert.ok(!paid.some((x) => x.includes("Pago por revisar")));
+});
+
 test("internal payment warnings are not sent with the customer's notes", () => {
   assert.equal(customerNotes(`Sin nueces\n${AMOUNT_MISMATCH_NOTE}`), "Sin nueces");
   assert.equal(customerNotes(`${DOUBLE_CHARGE_NOTE}`), null);

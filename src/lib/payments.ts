@@ -45,6 +45,17 @@ export async function createAttempt(
   const amount = Math.round(order.total);
   const boldOrderId = newBoldOrderId(order.id);
 
+  // Bold already took money for this order (an approved attempt, or an
+  // approval with a different amount flagged in the notes): a new attempt
+  // could charge the customer twice, so it is refused (routes answer 409).
+  if ((await countApprovedAttempts(supabase, order.id)) > 0) throw new OrderNotPayableError(order.id);
+  const notesRes = await supabase.from("orders").select("notes").eq("id", order.id).maybeSingle();
+  if (notesRes.error) throw new Error(`createAttempt: read order: ${notesRes.error.message}`);
+  if (!notesRes.data) throw new OrderNotPayableError(order.id);
+  if (((notesRes.data as { notes: string | null }).notes ?? "").includes(AMOUNT_MISMATCH_NOTE)) {
+    throw new OrderNotPayableError(order.id);
+  }
+
   // Mark the order first, guarded so a paid / cancelled / delivered order is
   // never touched; only when a row matched is an attempt recorded and signed.
   const update = await supabase

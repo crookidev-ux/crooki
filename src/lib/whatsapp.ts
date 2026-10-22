@@ -25,6 +25,8 @@ export interface WhatsAppOrder {
   delivery_fee: number;
   payment_status: PaymentStatus;
   bold_payment_id?: string | null;
+  /** Bold took money but the order is not marked paid: the shop must check it. */
+  payment_review?: boolean;
   order_items: WhatsAppOrderItem[];
 }
 
@@ -85,6 +87,7 @@ export function buildWhatsAppMessage(order: WhatsAppOrder): string {
     fee > 0 ? `*Domicilio:* ${money(fee)}` : null,
     `*Total: ${money(order.total)}*`,
     paidLine,
+    order.payment_status !== "paid" && order.payment_review ? `⚠ *Pago por revisar*` : null,
     ``,
     `*Entrega:* ${fulfillmentLine(order.fulfillment, order.delivery_zone)}`,
     `*Cliente:* ${order.customer_name}`,
