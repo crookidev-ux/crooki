@@ -65,7 +65,7 @@ export function buildOrderItems(lines: PricedLine[]): PricedLine[] {
   }));
 }
 
-/** Order shape for the current `buildWhatsAppOrderUrl` (Task 9 widens it). */
+/** Order shape for `buildWhatsAppOrderUrl` (QR orders: never paid at creation). */
 export function buildWhatsAppOrder(
   orderId: string,
   payload: OrderPayload,
@@ -78,6 +78,10 @@ export function buildWhatsAppOrder(
     recipient_phone: payload.recipient_phone ?? payload.customer_phone,
     notes: payload.notes || null,
     total: payload.total,
+    fulfillment: payload.fulfillment,
+    delivery_zone: payload.delivery_zone,
+    delivery_fee: payload.delivery_fee,
+    payment_status: payload.payment_status,
     order_items: lines.map((l) => ({
       product_name: l.product_name,
       quantity: l.quantity,

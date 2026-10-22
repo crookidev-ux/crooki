@@ -82,5 +82,9 @@ test("WhatsApp order falls back to the customer phone and null notes", () => {
   assert.equal(w.recipient_phone, "3001234567");
   assert.equal(w.notes, null);
   assert.equal(w.total, 10000);
+  assert.equal(w.fulfillment, "pickup");
+  assert.equal(w.delivery_zone, null);
+  assert.equal(w.delivery_fee, 0);
+  assert.equal(w.payment_status, "unpaid");
   assert.deepEqual(w.order_items, [{ product_name: "Galleta", quantity: 2, unit_price: 5000 }]);
 });
