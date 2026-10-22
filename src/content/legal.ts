@@ -18,7 +18,7 @@ export const legalDocs: LegalDoc[] = [
     slug: "politica-de-datos",
     es: {
       title: "Política de Tratamiento de Datos Personales",
-      body: `**Crooki Bake Bar** · Versión 1.0 · Vigente desde: 22 de octubre de 2026.
+      body: `**Crooki Bake Bar** · Versión 1.1 · Vigente desde: 22 de octubre de 2026.
 
 Esta política explica cómo Crooki recolecta, usa, guarda y protege los datos personales de sus clientes, incluidos quienes hacen pedidos en www.crookibakebar.com y quienes se inscriben en el Club Crooki, y cómo pueden ejercer sus derechos. Se expide conforme a la Ley 1581 de 2012, el Decreto 1074 de 2015 (Capítulo 25) y la Ley 2300 de 2023.
 
@@ -113,7 +113,7 @@ Cualquier cambio importante se comunicará a los socios del Club por los canales
     },
     en: {
       title: "Personal Data Processing Policy",
-      body: `**Crooki Bake Bar** · Version 1.0 · Effective: October 22, 2026.
+      body: `**Crooki Bake Bar** · Version 1.1 · Effective: October 22, 2026.
 
 This policy explains how Crooki collects, uses, stores and protects the personal data of its customers, including those who order on www.crookibakebar.com and Club Crooki members, and how they can exercise their rights. It is issued under Law 1581 of 2012, Decree 1074 of 2015 (Chapter 25) and Law 2300 of 2023.
 
@@ -211,7 +211,7 @@ Any significant change will be communicated to Club members through the authoriz
     slug: "politica-de-cookies",
     es: {
       title: "Política de Cookies",
-      body: `**Crooki Bake Bar** · Versión 1.0 · Vigente desde: 22 de octubre de 2026.
+      body: `**Crooki Bake Bar** · Versión 1.1 · Vigente desde: 22 de octubre de 2026.
 
 Esta política explica qué son las cookies, cuáles usa www.crookibakebar.com y cómo puedes controlarlas. Complementa nuestra [Política de Tratamiento de Datos Personales](/legal/politica-de-datos), conforme a la Ley 1581 de 2012.
 
@@ -259,7 +259,7 @@ Si en el futuro empezamos a usar cookies analíticas o publicitarias, actualizar
     },
     en: {
       title: "Cookie Policy",
-      body: `**Crooki Bake Bar** · Version 1.0 · Effective: October 22, 2026.
+      body: `**Crooki Bake Bar** · Version 1.1 · Effective: October 22, 2026.
 
 This policy explains what cookies are, which ones www.crookibakebar.com uses and how you can control them. It complements our [Personal Data Processing Policy](/legal/politica-de-datos), under Law 1581 of 2012.
 

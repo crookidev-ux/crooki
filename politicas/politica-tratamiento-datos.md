@@ -1,6 +1,6 @@
 # Política de Tratamiento de Datos Personales
 
-**Crooki Bake Bar** · Versión 1.0 · Vigente desde: 22 de octubre de 2026.
+**Crooki Bake Bar** · Versión 1.1 · Vigente desde: 22 de octubre de 2026.
 
 Esta política explica cómo Crooki recolecta, usa, guarda y protege los datos personales de sus clientes, incluidos quienes hacen pedidos en www.crookibakebar.com y quienes se inscriben en el Club Crooki, y cómo pueden ejercer sus derechos. Se expide conforme a la Ley 1581 de 2012, el Decreto 1074 de 2015 (Capítulo 25) y la Ley 2300 de 2023.
 

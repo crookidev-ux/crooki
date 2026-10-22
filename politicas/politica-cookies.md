@@ -1,6 +1,6 @@
 # Política de Cookies
 
-**Crooki Bake Bar** · Versión 1.0 · Vigente desde: 22 de octubre de 2026.
+**Crooki Bake Bar** · Versión 1.1 · Vigente desde: 22 de octubre de 2026.
 
 Esta política explica qué son las cookies, cuáles usa www.crookibakebar.com y cómo puedes controlarlas. Complementa nuestra [Política de Tratamiento de Datos Personales](/legal/politica-de-datos), conforme a la Ley 1581 de 2012.
 
