@@ -1,8 +1,15 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import { Package, ShoppingBag, Plus, Tag } from "lucide-react";
+import { Package, ShoppingBag, Plus, Tag, TriangleAlert } from "lucide-react";
 import { requireAdmin } from "@/lib/admin-auth";
 import type { CategoryRow, Product } from "@/lib/types";
+import {
+  countsAsPending,
+  isUnpaidBold,
+  payLabelKey,
+  sortOrdersForAdmin,
+  warningLines,
+} from "@/lib/admin-orders";
 
 type ProductRow = Product & { product_images: { id: string; url: string }[] };
 type OrderRow = {
@@ -12,6 +19,13 @@ type OrderRow = {
   total: number;
   status: string;
   created_at: string;
+  fulfillment: string | null;
+  delivery_zone: string | null;
+  delivery_fee: number | null;
+  payment_method: string | null;
+  payment_status: string | null;
+  paid_at: string | null;
+  notes: string | null;
 };
 
 export default async function AdminDashboardPage({
@@ -36,7 +50,9 @@ export default async function AdminDashboardPage({
       .order("display_order"),
     supabase
       .from("orders")
-      .select("id, customer_name, customer_phone, total, status, created_at")
+      .select(
+        "id, customer_name, customer_phone, total, status, created_at, fulfillment, delivery_zone, delivery_fee, payment_method, payment_status, paid_at, notes",
+      )
       .order("created_at", { ascending: false })
       .limit(20),
   ]);
@@ -67,7 +83,24 @@ export default async function AdminDashboardPage({
     cancelled: t("order_cancelled"),
   };
 
-  const ordersList = (orders as OrderRow[]) ?? [];
+  const ordersList = sortOrdersForAdmin((orders as OrderRow[]) ?? []);
+  const payLabels = {
+    paid: t("pay_paid"),
+    awaiting: t("pay_awaiting"),
+    rejected: t("pay_rejected"),
+    qr: t("pay_qr"),
+  };
+  const payColors = {
+    paid: "bg-green-100 text-green-800",
+    awaiting: "bg-gray-200 text-gray-600",
+    rejected: "bg-red-100 text-red-800",
+    qr: "bg-amber-100 text-amber-800",
+  };
+  const fulfillmentLabels: Record<string, string> = {
+    delivery: t("fulfillment_delivery"),
+    pickup: t("fulfillment_pickup"),
+    dine_in: t("fulfillment_dine_in"),
+  };
 
   return (
     <div>
@@ -113,7 +146,7 @@ export default async function AdminDashboardPage({
         </div>
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 text-center">
           <div className="text-3xl font-black text-yellow-600">
-            {ordersList.filter((o) => o.status === "pending").length}
+            {ordersList.filter(countsAsPending).length}
           </div>
           <div className="text-gray-500 text-sm">{t("order_pending")}</div>
         </div>
@@ -220,18 +253,38 @@ export default async function AdminDashboardPage({
                     <th className="px-6 py-3 font-semibold text-gray-600">Cliente</th>
                     <th className="px-6 py-3 font-semibold text-gray-600">Total</th>
                     <th className="px-6 py-3 font-semibold text-gray-600">Estado</th>
+                    <th className="px-6 py-3 font-semibold text-gray-600">{t("col_payment")}</th>
+                    <th className="px-6 py-3 font-semibold text-gray-600">{t("col_delivery")}</th>
                     <th className="px-6 py-3 font-semibold text-gray-600">Fecha</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {ordersList.map((order) => (
-                    <tr key={order.id} className="hover:bg-gray-50 transition-colors">
+                  {ordersList.map((order) => {
+                    const payKey = payLabelKey(order);
+                    const dimmed = isUnpaidBold(order);
+                    const warnings = warningLines(order.notes);
+                    return (
+                    <tr
+                      key={order.id}
+                      className={`hover:bg-gray-50 transition-colors ${dimmed ? "opacity-50" : ""} ${
+                        countsAsPending(order) ? "bg-yellow-50/60" : ""
+                      }`}
+                    >
                       <td className="px-6 py-4 font-mono text-xs text-gray-500">
                         {order.id.slice(0, 8).toUpperCase()}
                       </td>
                       <td className="px-6 py-4">
                         <div className="font-medium">{order.customer_name}</div>
                         <div className="text-gray-400 text-xs">{order.customer_phone}</div>
+                        {warnings.map((w) => (
+                          <div
+                            key={w}
+                            className="mt-1 flex items-start gap-1 rounded-md bg-red-100 px-2 py-1 text-xs font-bold text-red-800"
+                          >
+                            <TriangleAlert className="w-3.5 h-3.5 mt-px shrink-0" />
+                            {w}
+                          </div>
+                        ))}
                       </td>
                       <td className="px-6 py-4 font-bold">
                         ${order.total.toLocaleString("es-CO")}
@@ -245,11 +298,32 @@ export default async function AdminDashboardPage({
                           {statusLabels[order.status] ?? order.status}
                         </span>
                       </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${payColors[payKey]}`}
+                        >
+                          {payLabels[payKey]}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-xs text-gray-600">
+                        <div className="font-medium">
+                          {fulfillmentLabels[order.fulfillment ?? ""] ?? "-"}
+                        </div>
+                        {order.fulfillment === "delivery" && (
+                          <div className="text-gray-400">
+                            {order.delivery_zone ?? ""}
+                            {order.delivery_fee
+                              ? ` · ${t("delivery_fee")} $${order.delivery_fee.toLocaleString("es-CO")}`
+                              : ""}
+                          </div>
+                        )}
+                      </td>
                       <td className="px-6 py-4 text-gray-500">
                         {new Date(order.created_at).toLocaleDateString("es-CO")}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
