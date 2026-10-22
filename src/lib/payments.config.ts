@@ -2,8 +2,9 @@
 // The secret key is only used to compute the integrity signature; it is never
 // part of the returned object.
 import { integritySignature } from "./bold.ts";
-import { AMOUNT_MISMATCH_NOTE } from "./payments.confirm.ts";
+import { AMOUNT_MISMATCH_NOTE, hasSystemNote } from "./payments.confirm.ts";
 import type { BoldClientConfig } from "@/lib/bold";
+import type { BoldPaymentStatus } from "@/lib/bold-status";
 
 export type BoldConfigInput = {
   orderId: string;
@@ -45,8 +46,24 @@ export function qrSwitchBlockReason(
 ): ReturnType<typeof retryBlockReason> {
   return retryBlockReason(order, {
     hasApprovedAttempt,
-    amountMismatch: (order.notes ?? "").includes(AMOUNT_MISMATCH_NOTE),
+    amountMismatch: hasSystemNote(order.notes, AMOUNT_MISMATCH_NOTE),
   });
+}
+
+/**
+ * What a switch to QR does with Bold's live status of the order's latest
+ * attempt that is still `created`: an approval is confirmed and the switch
+ * refused (the order is paid), an in-progress payment refuses the switch, a
+ * rejection is recorded and the switch goes on; anything else (no answer,
+ * no transaction, voided) lets it go on.
+ */
+export function qrSwitchBoldAction(
+  status: BoldPaymentStatus | null | undefined,
+): "confirm_approved" | "in_progress" | "confirm_rejected" | "proceed" {
+  if (status === "APPROVED") return "confirm_approved";
+  if (status === "PENDING" || status === "PROCESSING") return "in_progress";
+  if (status === "REJECTED" || status === "FAILED") return "confirm_rejected";
+  return "proceed";
 }
 
 /**

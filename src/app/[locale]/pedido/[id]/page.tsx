@@ -16,6 +16,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { buildWhatsAppOrderUrl, customerNotes } from "@/lib/whatsapp";
 import { fetchBoldStatus } from "@/lib/bold-status";
 import { AMOUNT_MISMATCH_NOTE, confirmAttempt } from "@/lib/payments";
+import { hasSystemNote } from "@/lib/payments.confirm";
 import { retryBlockReason } from "@/lib/payments.config";
 import { isBoldConfigured } from "@/lib/bold";
 import type { Order, OrderItem, PaymentAttempt } from "@/lib/types";
@@ -116,7 +117,7 @@ export default async function OrderConfirmationPage({
   const needsReview =
     !isPaid &&
     (attempts.some((a) => a.status === "approved") ||
-      Boolean(order.notes?.includes(AMOUNT_MISMATCH_NOTE)));
+      hasSystemNote(order.notes, AMOUNT_MISMATCH_NOTE));
   const view: View =
     order.payment_method !== "bold"
       ? "qr"
@@ -153,7 +154,7 @@ export default async function OrderConfirmationPage({
     isBoldConfigured() &&
     retryBlockReason(order, {
       hasApprovedAttempt: attempts.some((a) => a.status === "approved"),
-      amountMismatch: Boolean(order.notes?.includes(AMOUNT_MISMATCH_NOTE)),
+      amountMismatch: hasSystemNote(order.notes, AMOUNT_MISMATCH_NOTE),
     }) === null;
 
   const header = {

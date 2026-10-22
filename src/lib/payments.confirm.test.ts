@@ -4,6 +4,7 @@ import {
   AMOUNT_MISMATCH_NOTE,
   decideConfirmation,
   DOUBLE_CHARGE_NOTE,
+  hasSystemNote,
   withNote,
 } from "./payments.confirm.ts";
 
@@ -121,5 +122,60 @@ test("withNote appends once, on its own line", () => {
   assert.equal(
     withNote(`x\n${DOUBLE_CHARGE_NOTE}`, AMOUNT_MISMATCH_NOTE),
     `x\n${DOUBLE_CHARGE_NOTE}\n${AMOUNT_MISMATCH_NOTE}`,
+  );
+});
+
+test("hasSystemNote matches whole lines only", () => {
+  assert.equal(hasSystemNote(null, AMOUNT_MISMATCH_NOTE), false);
+  assert.equal(hasSystemNote("", AMOUNT_MISMATCH_NOTE), false);
+  assert.equal(hasSystemNote(AMOUNT_MISMATCH_NOTE, AMOUNT_MISMATCH_NOTE), true);
+  assert.equal(hasSystemNote(`Sin nueces\r\n  ${AMOUNT_MISMATCH_NOTE}  `, AMOUNT_MISMATCH_NOTE), true);
+  assert.equal(hasSystemNote(`Sin nueces ${AMOUNT_MISMATCH_NOTE}`, AMOUNT_MISMATCH_NOTE), false);
+  assert.equal(hasSystemNote(DOUBLE_CHARGE_NOTE, AMOUNT_MISMATCH_NOTE), false);
+});
+
+test("withNote still writes the warning when the text only appears inside a longer line", () => {
+  const typed = `Cliente: ${DOUBLE_CHARGE_NOTE}`;
+  assert.equal(withNote(typed, DOUBLE_CHARGE_NOTE), `${typed}\n${DOUBLE_CHARGE_NOTE}`);
+});
+
+const qrOrder = { payment_status: "unpaid", payment_method: "qr" };
+
+test("late approval on a rejected attempt of a QR order → attempt approved, flagged, order not paid", () => {
+  assert.deepEqual(
+    decideConfirmation({ status: "rejected", amount: 39400 }, qrOrder, { kind: "approved", amount: 39400 }),
+    { attempt: "approved", order: "unchanged", notify: false, doubleCharge: true, checkDoubleCharge: false, amountMismatch: false },
+  );
+});
+
+test("approval on a still-created attempt of a QR order is flagged too, and a replay keeps flagging", () => {
+  assert.deepEqual(
+    decideConfirmation(created, qrOrder, { kind: "approved", amount: 39400 }),
+    { attempt: "approved", order: "unchanged", notify: false, doubleCharge: true, checkDoubleCharge: false, amountMismatch: false },
+  );
+  assert.deepEqual(
+    decideConfirmation({ status: "approved", amount: 39400 }, qrOrder, { kind: "approved", amount: 39400 }),
+    { attempt: "unchanged", order: "unchanged", notify: false, doubleCharge: true, checkDoubleCharge: false, amountMismatch: false },
+  );
+});
+
+test("QR order: a different amount is still an amount mismatch", () => {
+  const d = decideConfirmation({ status: "rejected", amount: 39400 }, qrOrder, { kind: "approved", amount: 1000 });
+  assert.equal(d.amountMismatch, true);
+  assert.equal(d.order, "unchanged");
+  assert.equal(d.attempt, "unchanged");
+});
+
+test("QR order: a rejection only closes the attempt, never the order", () => {
+  assert.deepEqual(
+    decideConfirmation(created, qrOrder, { kind: "rejected" }),
+    { attempt: "rejected", order: "unchanged", notify: false, doubleCharge: false, checkDoubleCharge: false, amountMismatch: false },
+  );
+});
+
+test("a Bold order (payment_method given) keeps the normal rules", () => {
+  assert.equal(
+    decideConfirmation(created, { payment_status: "awaiting_payment", payment_method: "bold" }, { kind: "approved", amount: 39400 }).order,
+    "paid",
   );
 });

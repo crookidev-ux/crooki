@@ -6,6 +6,7 @@ import {
   orderDescription,
   redirectionUrl,
   qrSwitchBlockReason,
+  qrSwitchBoldAction,
   retryBlockReason,
 } from "./payments.config.ts";
 import { AMOUNT_MISMATCH_NOTE } from "./payments.confirm.ts";
@@ -118,4 +119,21 @@ test("qrSwitchBlockReason allows only open, unpaid Bold orders with no money tak
     qrSwitchBlockReason({ ...open, notes: `Sin nueces\n${AMOUNT_MISMATCH_NOTE}` }, false),
     "review",
   );
+});
+
+test("qrSwitchBlockReason ignores the warning text inside a longer customer line", () => {
+  const open = { payment_method: "bold", payment_status: "rejected", status: "pending" };
+  assert.equal(qrSwitchBlockReason({ ...open, notes: `Hola ${AMOUNT_MISMATCH_NOTE}` }, false), null);
+});
+
+test("qrSwitchBoldAction maps Bold's live status of an open attempt", () => {
+  assert.equal(qrSwitchBoldAction("APPROVED"), "confirm_approved");
+  assert.equal(qrSwitchBoldAction("PENDING"), "in_progress");
+  assert.equal(qrSwitchBoldAction("PROCESSING"), "in_progress");
+  assert.equal(qrSwitchBoldAction("REJECTED"), "confirm_rejected");
+  assert.equal(qrSwitchBoldAction("FAILED"), "confirm_rejected");
+  assert.equal(qrSwitchBoldAction("NO_TRANSACTION_FOUND"), "proceed");
+  assert.equal(qrSwitchBoldAction("VOIDED"), "proceed");
+  assert.equal(qrSwitchBoldAction(null), "proceed");
+  assert.equal(qrSwitchBoldAction(undefined), "proceed");
 });

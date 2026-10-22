@@ -4,7 +4,9 @@
 // the customer sends to the shop. Only open, unpaid Bold orders where Bold
 // took no money can switch (the same rule as a payment retry).
 import { createServiceClient } from "@/lib/supabase/service";
-import { qrSwitchBlockReason } from "@/lib/payments.config";
+import { fetchBoldStatus } from "@/lib/bold-status";
+import { confirmAttempt } from "@/lib/payments";
+import { qrSwitchBlockReason, qrSwitchBoldAction } from "@/lib/payments.config";
 import { buildWhatsAppOrderUrl } from "@/lib/whatsapp";
 import type { Order, OrderItem } from "@/lib/types";
 
@@ -55,6 +57,37 @@ export async function POST(request: Request) {
       return error(409, "This order cannot switch to QR payment");
     }
 
+    // The latest attempt may still be open in Bold (late webhook): ask Bold
+    // first, so a payment that went through is never hidden behind a switch.
+    const latest = await supabase
+      .from("payment_attempts")
+      .select("bold_order_id, status")
+      .eq("order_id", order.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (latest.error) {
+      console.error("[checkout/switch-to-qr] load latest attempt failed", latest.error);
+      return error(500, "Could not switch the payment method");
+    }
+    const attempt = latest.data as { bold_order_id: string; status: string } | null;
+    if (attempt?.status === "created") {
+      const status = await fetchBoldStatus(attempt.bold_order_id);
+      const action = qrSwitchBoldAction(status?.status);
+      if (action === "confirm_approved") {
+        await confirmAttempt(supabase, attempt.bold_order_id, {
+          kind: "approved",
+          amount: status?.total,
+          paymentId: status?.transactionId,
+        });
+        return error(409, "This order was already paid online");
+      }
+      if (action === "in_progress") return error(409, "An online payment is still in progress");
+      if (action === "confirm_rejected") {
+        await confirmAttempt(supabase, attempt.bold_order_id, { kind: "rejected" });
+      }
+    }
+
     // Guarded write: a webhook may mark it paid between the read and here.
     const updated = await supabase
       .from("orders")
@@ -70,6 +103,19 @@ export async function POST(request: Request) {
     }
     if (!updated.data || updated.data.length === 0) {
       return error(409, "This order cannot switch to QR payment");
+    }
+
+    // Close the attempts still open in Bold: a late approval on one of them
+    // then lands on a rejected attempt of a QR order, which confirmAttempt
+    // flags for review instead of marking the order paid.
+    const closed = await supabase
+      .from("payment_attempts")
+      .update({ status: "rejected", updated_at: new Date().toISOString() })
+      .eq("order_id", order.id)
+      .eq("status", "created");
+    if (closed.error) {
+      // Not fatal: the order is already QR, and approvals on QR orders are flagged anyway.
+      console.error("[checkout/switch-to-qr] close open attempts failed", closed.error);
     }
 
     const whatsappUrl = buildWhatsAppOrderUrl({

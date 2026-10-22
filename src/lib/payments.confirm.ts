@@ -36,17 +36,29 @@ const NOTHING: ConfirmationDecision = {
  *   if it is not (the order write was lost), the order is paid now, so a retry repairs a partial failure.
  * - approved otherwise → attempt approved, order paid, notify.
  * - rejected never touches a paid order nor an approved attempt.
+ * - order no longer paid online (the customer switched it to QR): an approval
+ *   is recorded on the attempt but never marks the order paid; it is flagged
+ *   for review (`doubleCharge` note), since the customer may have paid by QR
+ *   too. A rejection only updates the attempt.
  */
 export function decideConfirmation(
   attempt: { status: string; amount: number },
-  order: { payment_status: string },
+  order: { payment_status: string; payment_method?: string },
   event: ConfirmationEvent,
 ): ConfirmationDecision {
   const orderPaid = order.payment_status === "paid";
+  const switchedOffline = order.payment_method !== undefined && order.payment_method !== "bold";
 
   if (event.kind === "approved") {
     if (event.amount === undefined) return NOTHING;
     if (event.amount !== attempt.amount) return { ...NOTHING, amountMismatch: true };
+    if (switchedOffline) {
+      return {
+        ...NOTHING,
+        attempt: attempt.status === "approved" ? "unchanged" : "approved",
+        doubleCharge: true,
+      };
+    }
     if (attempt.status === "approved") {
       return orderPaid
         ? { ...NOTHING, checkDoubleCharge: true }
@@ -57,6 +69,9 @@ export function decideConfirmation(
   }
 
   if (attempt.status === "approved") return NOTHING;
+  if (switchedOffline) {
+    return { ...NOTHING, attempt: attempt.status === "rejected" ? "unchanged" : "rejected" };
+  }
   return {
     ...NOTHING,
     attempt: attempt.status === "rejected" ? "unchanged" : "rejected",
@@ -67,9 +82,18 @@ export function decideConfirmation(
 export const DOUBLE_CHARGE_NOTE = "⚠ Posible cobro doble: revisar en Bold";
 export const AMOUNT_MISMATCH_NOTE = "⚠ Monto distinto: revisar en Bold";
 
+/**
+ * Whether `notes` carries the system `note` as a line of its own (exact match
+ * after trim). A mention inside a longer line, e.g. typed by a customer, does not count.
+ */
+export function hasSystemNote(notes: string | null | undefined, note: string): boolean {
+  if (!notes) return false;
+  return notes.split("\n").some((line) => line.trim() === note);
+}
+
 /** `notes` with `note` appended on its own line, or null when it is already there. */
 export function withNote(notes: string | null, note: string): string | null {
   const current = notes ?? "";
-  if (current.includes(note)) return null;
+  if (hasSystemNote(current, note)) return null;
   return current ? `${current}\n${note}` : note;
 }

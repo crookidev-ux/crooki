@@ -7,6 +7,7 @@ import {
   AMOUNT_MISMATCH_NOTE,
   decideConfirmation,
   DOUBLE_CHARGE_NOTE,
+  hasSystemNote,
   withNote,
 } from "@/lib/payments.confirm";
 import { sendPaidOrderEmail } from "@/lib/notify";
@@ -52,7 +53,7 @@ export async function createAttempt(
   const notesRes = await supabase.from("orders").select("notes").eq("id", order.id).maybeSingle();
   if (notesRes.error) throw new Error(`createAttempt: read order: ${notesRes.error.message}`);
   if (!notesRes.data) throw new OrderNotPayableError(order.id);
-  if (((notesRes.data as { notes: string | null }).notes ?? "").includes(AMOUNT_MISMATCH_NOTE)) {
+  if (hasSystemNote((notesRes.data as { notes: string | null }).notes, AMOUNT_MISMATCH_NOTE)) {
     throw new OrderNotPayableError(order.id);
   }
 
@@ -157,11 +158,11 @@ export async function confirmAttempt(
 
   const orderRes = await supabase
     .from("orders")
-    .select("id, payment_status")
+    .select("id, payment_status, payment_method")
     .eq("id", attempt.order_id)
     .maybeSingle();
   if (orderRes.error) throw new Error(`${tag}: load order: ${orderRes.error.message}`);
-  const order = orderRes.data as { id: string; payment_status: string } | null;
+  const order = orderRes.data as { id: string; payment_status: string; payment_method: string } | null;
   if (!order) {
     console.error(`${tag}: order ${attempt.order_id} not found; ignored`);
     return;

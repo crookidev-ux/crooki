@@ -1,6 +1,7 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import { BOLD_MIN_AMOUNT, isBoldConfigured } from "@/lib/bold";
 import { AMOUNT_MISMATCH_NOTE, createAttempt, OrderNotPayableError } from "@/lib/payments";
+import { hasSystemNote } from "@/lib/payments.confirm";
 import { retryBlockReason } from "@/lib/payments.config";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -63,7 +64,7 @@ export async function POST(request: Request) {
     }
     const block = retryBlockReason(order, {
       hasApprovedAttempt: (approved.count ?? 0) > 0,
-      amountMismatch: (order.notes ?? "").includes(AMOUNT_MISMATCH_NOTE),
+      amountMismatch: hasSystemNote(order.notes, AMOUNT_MISMATCH_NOTE),
     });
     if (block) return error(409, "This order cannot be paid online");
 
