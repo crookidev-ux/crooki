@@ -5,7 +5,7 @@
 // took no money can switch (the same rule as a payment retry).
 import { createServiceClient } from "@/lib/supabase/service";
 import { fetchBoldStatus } from "@/lib/bold-status";
-import { confirmAttempt } from "@/lib/payments";
+import { ConcurrentUpdateError, confirmAttempt } from "@/lib/payments";
 import { qrSwitchBlockReason, qrSwitchBoldAction } from "@/lib/payments.config";
 import { buildWhatsAppOrderUrl } from "@/lib/whatsapp";
 import type { Order, OrderItem } from "@/lib/types";
@@ -128,6 +128,8 @@ export async function POST(request: Request) {
     });
     return Response.json({ whatsappUrl });
   } catch (e) {
+    // The attempt changed while we confirmed it (e.g. a webhook): let the page refresh.
+    if (e instanceof ConcurrentUpdateError) return error(409, "The payment changed; reload the order");
     console.error("[checkout/switch-to-qr] unexpected error", e);
     return error(500, "Could not switch the payment method");
   }

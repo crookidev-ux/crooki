@@ -15,7 +15,7 @@ import {
 import { createServiceClient } from "@/lib/supabase/service";
 import { buildWhatsAppOrderUrl, customerNotes } from "@/lib/whatsapp";
 import { fetchBoldStatus } from "@/lib/bold-status";
-import { AMOUNT_MISMATCH_NOTE, confirmAttempt } from "@/lib/payments";
+import { AMOUNT_MISMATCH_NOTE, ConcurrentUpdateError, confirmAttempt } from "@/lib/payments";
 import { hasSystemNote } from "@/lib/payments.confirm";
 import { retryBlockReason } from "@/lib/payments.config";
 import { isBoldConfigured } from "@/lib/bold";
@@ -105,7 +105,15 @@ export default async function OrderConfirmationPage({
           attempts = await loadAttempts(supabase, order.id);
         }
       } catch (e) {
-        console.error(`[pedido] payment status fallback failed for order ${id}`, e);
+        if (e instanceof ConcurrentUpdateError) {
+          // Another writer changed the attempt meanwhile: show the fresh state,
+          // and «confirming» rather than offering a new charge.
+          boldPending = true;
+          order = (await loadOrder(supabase, id)) ?? order;
+          attempts = await loadAttempts(supabase, order.id);
+        } else {
+          console.error(`[pedido] payment status fallback failed for order ${id}`, e);
+        }
       }
     }
   }

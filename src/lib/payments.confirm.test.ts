@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  afterLostPaidWrite,
   AMOUNT_MISMATCH_NOTE,
   decideConfirmation,
   DOUBLE_CHARGE_NOTE,
@@ -178,4 +179,23 @@ test("a Bold order (payment_method given) keeps the normal rules", () => {
     decideConfirmation(created, { payment_status: "awaiting_payment", payment_method: "bold" }, { kind: "approved", amount: 39400 }).order,
     "paid",
   );
+});
+
+test("afterLostPaidWrite: switched to QR meanwhile → flag; still Bold → check double charge; gone → nothing", () => {
+  assert.equal(afterLostPaidWrite({ payment_method: "qr" }), "flag_switched");
+  assert.equal(afterLostPaidWrite({ payment_method: "bold" }), "check_double_charge");
+  assert.equal(afterLostPaidWrite(null), "none");
+});
+
+test("the retry after a lost race on a switched order is flagged, never paid", () => {
+  // switch-to-qr rejected the attempt between the webhook's read and write;
+  // Bold retries and the re-read state (rejected attempt, QR order) is flagged.
+  const d = decideConfirmation(
+    { status: "rejected", amount: 39400 },
+    { payment_status: "unpaid", payment_method: "qr" },
+    { kind: "approved", amount: 39400 },
+  );
+  assert.equal(d.order, "unchanged");
+  assert.equal(d.notify, false);
+  assert.equal(d.doubleCharge, true);
 });

@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { isBoldConfigured, newBoldOrderId, type BoldClientConfig } from "@/lib/bold";
 import { buildBoldClientConfig } from "@/lib/payments.config";
 import {
+  afterLostPaidWrite,
   AMOUNT_MISMATCH_NOTE,
   decideConfirmation,
   DOUBLE_CHARGE_NOTE,
@@ -87,6 +88,18 @@ export async function createAttempt(
 }
 
 export { AMOUNT_MISMATCH_NOTE, DOUBLE_CHARGE_NOTE };
+
+/**
+ * The attempt changed between confirmAttempt's read and its guarded write
+ * (e.g. a switch to QR closed it). Thrown so the webhook answers 500 and Bold
+ * retries; the retry re-reads the new state and decides again.
+ */
+export class ConcurrentUpdateError extends Error {
+  constructor(boldOrderId: string) {
+    super(`confirmAttempt: attempt ${boldOrderId} changed concurrently`);
+    this.name = "ConcurrentUpdateError";
+  }
+}
 
 export type ConfirmEvent = { kind: "approved" | "rejected"; amount?: number; paymentId?: string };
 
@@ -191,10 +204,11 @@ export async function confirmAttempt(
       .select("id");
     if (upd.error) throw new Error(`${tag}: update attempt: ${upd.error.message}`);
     if (!upd.data || upd.data.length === 0) {
-      // Another delivery of this same event changed the attempt first; it owns the rest
-      // (if it fails, Bold retries and the replay re-checks everything from the DB).
-      console.warn(`${tag}: attempt changed concurrently; skipped`);
-      return;
+      // Another writer (a second delivery, or a switch to QR) changed the attempt
+      // first. Never answer success for it: Bold retries and the replay decides
+      // again from the new state.
+      console.warn(`${tag}: attempt changed concurrently; retry needed`);
+      throw new ConcurrentUpdateError(boldOrderId);
     }
   }
 
@@ -205,6 +219,7 @@ export async function confirmAttempt(
       .from("orders")
       .update({ payment_status: "paid", paid_at: now })
       .eq("id", order.id)
+      .eq("payment_method", "bold")
       .neq("payment_status", "paid")
       .select("id");
     if (upd.error) throw new Error(`${tag}: mark order paid: ${upd.error.message}`);
@@ -215,8 +230,24 @@ export async function confirmAttempt(
       // the response is sent, so the webhook answers Bold quickly; never throws.
       after(() => notifyPaid(supabase, order.id, paymentId));
     }
-    // Someone else paid the order between our read and our write: maybe another attempt.
-    if (!flipped) checkDouble = true;
+    if (!flipped) {
+      // Paid by someone else, or switched to QR, between our read and our write.
+      const reread = await supabase
+        .from("orders")
+        .select("payment_method")
+        .eq("id", order.id)
+        .maybeSingle();
+      if (reread.error) throw new Error(`${tag}: re-read order: ${reread.error.message}`);
+      const action = afterLostPaidWrite(reread.data as { payment_method: string } | null);
+      if (action === "flag_switched") {
+        console.error(
+          `${tag}: Bold approved order ${order.id} after it switched to QR; flagged for review (Bold payment ${event.paymentId ?? "?"})`,
+        );
+        await appendOrderNote(supabase, order.id, DOUBLE_CHARGE_NOTE);
+      } else if (action === "check_double_charge") {
+        checkDouble = true;
+      }
+    }
   } else if (decision.order === "rejected") {
     const upd = await supabase
       .from("orders")

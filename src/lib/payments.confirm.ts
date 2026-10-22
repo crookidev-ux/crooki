@@ -79,6 +79,19 @@ export function decideConfirmation(
   };
 }
 
+/**
+ * After the guarded paid write (Bold orders only, not already paid) matched no
+ * row, given the order as re-read: it was switched off online payment (QR)
+ * meanwhile → flag it for review; still a Bold order (someone else paid it) →
+ * count approved attempts for a double charge; gone → nothing.
+ */
+export function afterLostPaidWrite(
+  order: { payment_method: string } | null,
+): "flag_switched" | "check_double_charge" | "none" {
+  if (!order) return "none";
+  return order.payment_method === "bold" ? "check_double_charge" : "flag_switched";
+}
+
 export const DOUBLE_CHARGE_NOTE = "⚠ Posible cobro doble: revisar en Bold";
 export const AMOUNT_MISMATCH_NOTE = "⚠ Monto distinto: revisar en Bold";
 
