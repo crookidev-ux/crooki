@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, Loader2 } from "lucide-react";
 import { useCartStore } from "@/store/cart";
+import { comboUnitPrice } from "@/lib/pricing";
 import type { ComboSelection, Product } from "@/lib/types";
 
 interface Props {
@@ -53,7 +54,7 @@ export default function ComboConfigurator({ combo, productsById, locale, onClose
     return r?.row.extra_price ?? 0;
   }, [cookieRows, cookieId]);
 
-  const unitPrice = combo.price + cookieExtra;
+  const unitPrice = comboUnitPrice(combo.price, cookieExtra);
 
   const canAdd = !!cookieId && (!combo.includes_salsa || !!includedSalsaId);
 

@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { ShoppingBag, ArrowLeft, Loader2 } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { buildWhatsAppOrderUrl } from "@/lib/whatsapp";
+import { lineDisplayName } from "@/lib/pricing";
 
 interface FormData {
   name: string;
@@ -69,29 +70,11 @@ export default function CheckoutClient({ locale }: Props) {
 
       const rpcItems = items.map((item) => {
         const baseName = locale === "en" ? item.product.name_en : item.product.name_es;
-        let productName = baseName;
-        if (item.combo) {
-          const parts: string[] = [item.combo.cookieName];
-          if (item.combo.includedSalsaName) {
-            parts.push(`Salsa ${item.combo.includedSalsaName}`);
-          }
-          for (const extra of item.combo.additionalSalsas) {
-            parts.push(`${extra.quantity}× ${extra.salsaName}`);
-          }
-          productName = `${baseName} · ${parts.join(" + ")}`;
-        } else if (item.box) {
-          const cookieParts = item.box.cookies.map((c) => `${c.quantity}× ${c.cookieName}`);
-          const giftSuffix =
-            item.box.giftCard === "card"
-              ? " · Gift card"
-              : item.box.giftCard === "card_and_cake"
-                ? " · Gift card + vela"
-                : "";
-          productName = `${baseName} · ${cookieParts.join(" + ")}${giftSuffix}`;
-        } else if (item.helado && item.helado.salsas.length > 0) {
-          const salsaParts = item.helado.salsas.map((s) => `${s.quantity}× ${s.salsaName}`);
-          productName = `${baseName} · ${salsaParts.join(" + ")}`;
-        }
+        const productName = lineDisplayName(baseName, {
+          combo: item.combo,
+          box: item.box,
+          helado: item.helado,
+        });
         return {
           product_id: item.product.id,
           product_name: productName,

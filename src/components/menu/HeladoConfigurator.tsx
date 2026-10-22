@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, Minus, Plus, Loader2 } from "lucide-react";
 import { useCartStore } from "@/store/cart";
+import { heladoUnitPrice } from "@/lib/pricing";
 import type { HeladoSelection, Product } from "@/lib/types";
 
 interface Props {
@@ -41,15 +42,13 @@ export default function HeladoConfigurator({ helado, productsById, locale, onClo
     [salsaQty],
   );
 
-  const salsasTotal = useMemo(() => {
-    let sum = 0;
-    for (const { row } of salsaRows) {
-      sum += (salsaQty[row.salsa_id] ?? 0) * row.extra_price;
-    }
-    return sum;
-  }, [salsaRows, salsaQty]);
-
-  const unitPrice = helado.price + salsasTotal;
+  const unitPrice = heladoUnitPrice(
+    helado.price,
+    salsaRows.map(({ row }) => ({
+      quantity: salsaQty[row.salsa_id] ?? 0,
+      extraPrice: row.extra_price,
+    })),
+  );
 
   const setQty = (salsaId: string, delta: number) =>
     setSalsaQty((cur) => {

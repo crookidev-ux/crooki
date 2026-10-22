@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, Minus, Plus, Loader2 } from "lucide-react";
 import { useCartStore } from "@/store/cart";
+import { boxUnitPrice } from "@/lib/pricing";
 import type { BoxSelection, GiftCardChoice, Product } from "@/lib/types";
 
 interface Props {
@@ -36,15 +37,6 @@ export default function BoxConfigurator({ box, productsById, locale, onClose }: 
     [cookieRows, qtyByCookie],
   );
 
-  const cookiesExtraTotal = useMemo(
-    () =>
-      cookieRows.reduce((sum, { row }) => {
-        const q = qtyByCookie[row.cookie_id] ?? 0;
-        return sum + q * row.extra_price;
-      }, 0),
-    [cookieRows, qtyByCookie],
-  );
-
   const giftCardCost =
     giftCard === "card"
       ? box.gift_card_price ?? 0
@@ -52,7 +44,16 @@ export default function BoxConfigurator({ box, productsById, locale, onClose }: 
         ? box.gift_card_cake_price ?? 0
         : 0;
 
-  const unitPrice = box.price + cookiesExtraTotal + giftCardCost;
+  const unitPrice = boxUnitPrice(
+    box.price,
+    cookieRows.map(({ row }) => ({
+      quantity: qtyByCookie[row.cookie_id] ?? 0,
+      extraPrice: row.extra_price,
+    })),
+    giftCard,
+    box.gift_card_price ?? null,
+    box.gift_card_cake_price ?? null,
+  );
 
   const remaining = targetCount - totalCookies;
   const overSelected = totalCookies > targetCount;
