@@ -15,6 +15,21 @@ export type BoldConfigInput = {
   secretKey: string;
 };
 
+/**
+ * Why an order cannot get a new online payment attempt, or null when it can:
+ * only Bold orders that are not paid and not cancelled/delivered.
+ */
+export function retryBlockReason(order: {
+  payment_method: string;
+  payment_status: string;
+  status: string;
+}): "not_bold" | "paid" | "closed" | null {
+  if (order.payment_method !== "bold") return "not_bold";
+  if (order.payment_status === "paid") return "paid";
+  if (order.status === "cancelled" || order.status === "delivered") return "closed";
+  return null;
+}
+
 export function orderDescription(orderId: string): string {
   return `Pedido Crooki #${orderId.slice(0, 8).toUpperCase()}`;
 }

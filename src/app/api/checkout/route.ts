@@ -8,7 +8,7 @@ import {
   buildOrderPayload,
   buildWhatsAppOrder,
 } from "@/lib/checkout/order-payload";
-import { createAttempt } from "@/lib/payments";
+import { createAttempt, OrderNotPayableError } from "@/lib/payments";
 import { buildWhatsAppOrderUrl } from "@/lib/whatsapp";
 
 type CheckoutResponse = {
@@ -66,11 +66,21 @@ export async function POST(request: Request) {
         buildWhatsAppOrder(orderId, payload, priced.lines),
       );
     } else {
-      response.bold = await createAttempt(
-        supabase,
-        { id: orderId, total: priced.total, locale: input.locale, customer: input.customer },
-        new URL(request.url).origin,
-      );
+      // The order exists from here on: on failure return its id so the client
+      // calls /api/checkout/retry instead of submitting a duplicate order.
+      try {
+        response.bold = await createAttempt(
+          supabase,
+          { id: orderId, total: priced.total, locale: input.locale, customer: input.customer },
+          new URL(request.url).origin,
+        );
+      } catch (e) {
+        if (e instanceof OrderNotPayableError) {
+          return Response.json({ error: "This order cannot be paid online", orderId }, { status: 409 });
+        }
+        console.error("[checkout] createAttempt failed", e);
+        return Response.json({ error: "Could not start the payment", orderId }, { status: 500 });
+      }
     }
     return Response.json(response);
   } catch (e) {

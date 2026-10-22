@@ -1,4 +1,4 @@
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomInt, timingSafeEqual } from "node:crypto";
 
 export const BOLD_MIN_AMOUNT = 1000;
 
@@ -38,8 +38,10 @@ export function verifyWebhookSignature(
   return timingSafeEqual(a, b);
 }
 
+/** "CRK-{first 8 of order id}-{time base36}-{4 random base36}"; the random part keeps two attempts in the same millisecond unique. */
 export function newBoldOrderId(orderId: string, now: number = Date.now()): string {
-  return `CRK-${orderId.slice(0, 8).toUpperCase()}-${now.toString(36).toUpperCase()}`;
+  const rand = randomInt(0, 36 ** 4).toString(36).padStart(4, "0").toUpperCase();
+  return `CRK-${orderId.slice(0, 8).toUpperCase()}-${now.toString(36).toUpperCase()}-${rand}`;
 }
 
 export function isBoldConfigured(env: Record<string, string | undefined> = process.env): boolean {

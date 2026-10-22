@@ -26,8 +26,15 @@ test("verifyWebhookSignature", () => {
 
 test("newBoldOrderId format", () => {
   const id = newBoldOrderId("3f2a9c1e-aaaa-bbbb-cccc-000000000000", 1700000000000);
-  assert.match(id, /^CRK-3F2A9C1E-[0-9A-Z]+$/);
+  assert.match(id, /^CRK-3F2A9C1E-[0-9A-Z]+-[0-9A-Z]{4}$/);
+  assert.match(id, /^[A-Za-z0-9_-]{1,60}$/);
   assert.ok(id.length <= 60);
+});
+
+test("newBoldOrderId differs for two calls in the same millisecond", () => {
+  const order = "3f2a9c1e-aaaa-bbbb-cccc-000000000000";
+  // 36^4 = 1.68M suffixes: two equal draws are ~6e-7, so this is not flaky in practice.
+  assert.notEqual(newBoldOrderId(order, 1700000000000), newBoldOrderId(order, 1700000000000));
 });
 
 test("isBoldConfigured", () => {

@@ -1,6 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildBoldClientConfig, orderDescription, redirectionUrl } from "./payments.config.ts";
+import {
+  buildBoldClientConfig,
+  orderDescription,
+  redirectionUrl,
+  retryBlockReason,
+} from "./payments.config.ts";
 import { integritySignature } from "./bold.ts";
 
 const input = {
@@ -44,4 +49,15 @@ test("redirectionUrl adds /en for English", () => {
 
 test("orderDescription uses the first 8 characters uppercased", () => {
   assert.equal(orderDescription("abcdef12-3456"), "Pedido Crooki #ABCDEF12");
+});
+
+test("retryBlockReason allows only unpaid, open Bold orders", () => {
+  const ok = { payment_method: "bold", payment_status: "awaiting_payment", status: "pending" };
+  assert.equal(retryBlockReason(ok), null);
+  assert.equal(retryBlockReason({ ...ok, payment_status: "rejected" }), null);
+  assert.equal(retryBlockReason({ ...ok, status: "confirmed" }), null);
+  assert.equal(retryBlockReason({ ...ok, payment_method: "qr" }), "not_bold");
+  assert.equal(retryBlockReason({ ...ok, payment_status: "paid" }), "paid");
+  assert.equal(retryBlockReason({ ...ok, status: "cancelled" }), "closed");
+  assert.equal(retryBlockReason({ ...ok, status: "delivered" }), "closed");
 });

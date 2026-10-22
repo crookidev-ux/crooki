@@ -4,6 +4,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { isBoldConfigured, newBoldOrderId, type BoldClientConfig } from "@/lib/bold";
 import { buildBoldClientConfig } from "@/lib/payments.config";
 
+/** The order is already paid, cancelled or delivered (or gone): no payment may be opened. Routes map it to 409. */
+export class OrderNotPayableError extends Error {
+  constructor(orderId: string) {
+    super(`createAttempt: order ${orderId} cannot be paid`);
+    this.name = "OrderNotPayableError";
+  }
+}
+
 export type AttemptOrder = {
   id: string;
   total: number;
@@ -28,17 +36,22 @@ export async function createAttempt(
   const amount = Math.round(order.total);
   const boldOrderId = newBoldOrderId(order.id);
 
-  const insert = await supabase
-    .from("payment_attempts")
-    .insert({ order_id: order.id, bold_order_id: boldOrderId, amount });
-  if (insert.error) throw new Error(`createAttempt: insert attempt: ${insert.error.message}`);
-
+  // Mark the order first, guarded so a paid / cancelled / delivered order is
+  // never touched; only when a row matched is an attempt recorded and signed.
   const update = await supabase
     .from("orders")
     .update({ payment_status: "awaiting_payment" })
     .eq("id", order.id)
-    .neq("payment_status", "paid");
+    .neq("payment_status", "paid")
+    .not("status", "in", "(cancelled,delivered)")
+    .select("id");
   if (update.error) throw new Error(`createAttempt: update order: ${update.error.message}`);
+  if (!update.data || update.data.length === 0) throw new OrderNotPayableError(order.id);
+
+  const insert = await supabase
+    .from("payment_attempts")
+    .insert({ order_id: order.id, bold_order_id: boldOrderId, amount });
+  if (insert.error) throw new Error(`createAttempt: insert attempt: ${insert.error.message}`);
 
   return buildBoldClientConfig({
     orderId: order.id,

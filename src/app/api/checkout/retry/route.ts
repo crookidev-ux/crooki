@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { BOLD_MIN_AMOUNT, isBoldConfigured } from "@/lib/bold";
-import { createAttempt } from "@/lib/payments";
+import { createAttempt, OrderNotPayableError } from "@/lib/payments";
+import { retryBlockReason } from "@/lib/payments.config";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -15,6 +16,7 @@ type OrderRow = {
   customer_phone: string;
   payment_method: string;
   payment_status: string;
+  status: string;
 };
 
 export async function POST(request: Request) {
@@ -40,7 +42,7 @@ export async function POST(request: Request) {
     const supabase = await createAdminClient();
     const { data, error: dbError } = await supabase
       .from("orders")
-      .select("id, total, customer_name, customer_email, customer_phone, payment_method, payment_status")
+      .select("id, total, customer_name, customer_email, customer_phone, payment_method, payment_status, status")
       .eq("id", orderId)
       .maybeSingle();
     if (dbError) {
@@ -49,9 +51,7 @@ export async function POST(request: Request) {
     }
     const order = data as OrderRow | null;
     if (!order) return error(404, "Order not found");
-    if (order.payment_method !== "bold" || order.payment_status === "paid") {
-      return error(409, "This order cannot be paid online");
-    }
+    if (retryBlockReason(order)) return error(409, "This order cannot be paid online");
 
     const total = Math.round(Number(order.total));
     if (!Number.isFinite(total) || total < BOLD_MIN_AMOUNT) {
@@ -74,6 +74,8 @@ export async function POST(request: Request) {
     );
     return Response.json({ bold });
   } catch (e) {
+    // Paid / cancelled / delivered between the read above and the guarded update.
+    if (e instanceof OrderNotPayableError) return error(409, "This order cannot be paid online");
     console.error("[checkout/retry] unexpected error", e);
     return error(500, "Could not start the payment");
   }
