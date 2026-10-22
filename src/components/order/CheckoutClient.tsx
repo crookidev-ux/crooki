@@ -149,6 +149,8 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
   const router = useRouter();
   const bold = useBoldCheckout(boldEnabled);
   const formRef = useRef<HTMLFormElement>(null);
+  // Synchronous double-tap guard (render state lags behind fast taps).
+  const inFlight = useRef(false);
 
   const [form, setForm] = useState<FormData>({
     name: "",
@@ -212,6 +214,8 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
   const boldKey = JSON.stringify(buildBody("bold"));
   const activePrepared = prepared && prepared.key === boldKey ? prepared : null;
   const displayTotal = activePrepared ? activePrepared.total : totalPreview;
+  // Keep the visible arithmetic consistent: subtotal + domicilio = total.
+  const displaySubtotal = activePrepared ? activePrepared.total - deliveryFee : subtotal;
 
   // «Pagar» is hidden for barrios whose fee is agreed over WhatsApp. With no
   // barrio picked yet it stays visible; validation asks for the barrio.
@@ -304,13 +308,14 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
   };
 
   const payOnline = async () => {
-    if (busy || !validate()) return;
+    if (inFlight.current || busy || !validate()) return;
     if (!bold.ready) return;
     if (activePrepared) {
       openPayment(activePrepared);
       return;
     }
     const key = boldKey;
+    inFlight.current = true;
     setPending("bold");
     try {
       const { res, data } = await postCheckout(key);
@@ -330,12 +335,14 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
       console.error(err);
       toast.error(t("error_generic"));
     } finally {
+      inFlight.current = false;
       setPending(null);
     }
   };
 
   const payByQr = async () => {
-    if (busy || !validate()) return;
+    if (inFlight.current || busy || !validate()) return;
+    inFlight.current = true;
     // Open a placeholder window synchronously inside the user gesture so the
     // browser doesn't block the WhatsApp pop-up after the awaited request.
     const waWindow = window.open("", "_blank");
@@ -361,6 +368,7 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
       if (waWindow && !waWindow.closed) waWindow.close();
       toast.error(t("error_generic"));
     } finally {
+      inFlight.current = false;
       setPending(null);
     }
   };
@@ -633,7 +641,7 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
               <dl className="border-t pt-4 flex flex-col gap-2 text-sm">
                 <div className="flex justify-between items-center text-gray-600">
                   <dt>{t("subtotal")}</dt>
-                  <dd>{money(subtotal)}</dd>
+                  <dd>{money(displaySubtotal)}</dd>
                 </div>
                 {isDelivery && zone && (
                   <div className="flex justify-between items-center text-gray-600 gap-3">
@@ -650,6 +658,16 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
                   </dd>
                 </div>
               </dl>
+
+              {activePrepared && (
+                <p
+                  role="status"
+                  className="mt-3 flex items-start gap-2 rounded-xl bg-[#fdf8f0] px-4 py-3 text-sm text-gray-700"
+                >
+                  <Info aria-hidden="true" className="w-4 h-4 mt-0.5 shrink-0" style={{ color: BRAND }} />
+                  {t("price_changed")}
+                </p>
+              )}
 
               <div className="mt-6 flex flex-col gap-3">
                 {zoneBlocksOnline && boldEnabled && (

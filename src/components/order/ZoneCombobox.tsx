@@ -136,7 +136,7 @@ export default function ZoneCombobox({ value, onChange, allowOutsideCity, error 
             setActive(-1);
           }}
           onKeyDown={onKeyDown}
-          className={`w-full border rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#8b0031] focus:border-transparent transition-all ${
+          className={`w-full border rounded-xl pl-10 pr-4 py-3 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#8b0031] focus:border-transparent transition-all ${
             error ? "border-red-400" : "border-gray-200"
           }`}
         />
