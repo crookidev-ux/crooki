@@ -44,6 +44,17 @@ test("fee line is omitted when the fee is 0 and the zone may be missing", () => 
   assert.ok(l.includes("*Entrega:* Domicilio"));
 });
 
+test("delivery to a «Consultar» zone says the fee is still to be confirmed", () => {
+  const l = lines({ ...delivery, delivery_fee: 0, delivery_zone: "Fuera de Cartagena" });
+  assert.ok(l.includes("*Domicilio:* por confirmar"));
+  assert.ok(!l.some((x) => x.startsWith("*Domicilio:* $")));
+});
+
+test("pickup orders never carry a delivery fee line", () => {
+  const l = lines({ ...delivery, fulfillment: "pickup", delivery_fee: 0, delivery_zone: "Getsemaní" });
+  assert.ok(!l.some((x) => x.startsWith("*Domicilio:*")));
+});
+
 test("pickup and dine-in omit address and recipient phone", () => {
   for (const [fulfillment, label] of [
     ["pickup", "Recoger en el local"],

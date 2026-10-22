@@ -84,7 +84,12 @@ export function buildWhatsAppMessage(order: WhatsAppOrder): string {
     `*Productos:*`,
     itemLines,
     ``,
-    fee > 0 ? `*Domicilio:* ${money(fee)}` : null,
+    fee > 0
+      ? `*Domicilio:* ${money(fee)}`
+      : isDelivery && order.delivery_zone
+        ? // «Consultar» zones (e.g. outside the city): the fee is agreed over WhatsApp.
+          `*Domicilio:* por confirmar`
+        : null,
     `*Total: ${money(order.total)}*`,
     paidLine,
     order.payment_status !== "paid" && order.payment_review ? `⚠ *Pago por revisar*` : null,
