@@ -2,6 +2,7 @@
 // only the known fields, so anything else the browser sends (prices, totals,
 // names) is dropped and can never reach the pricing step.
 import { OUTSIDE_CITY_ZONE_ID } from "../delivery-zones.ts";
+import { AMOUNT_MISMATCH_NOTE, DOUBLE_CHARGE_NOTE } from "../payments.confirm.ts";
 import type { Fulfillment } from "@/lib/delivery-zones";
 import type { GiftCardChoice } from "@/lib/types";
 
@@ -60,6 +61,20 @@ function text(v: unknown, field: string, max = MAX_TEXT, required = true): strin
   if (required && s.length === 0) fail(`${field} is required`);
   if (s.length > max) fail(`${field} is too long`);
   return s;
+}
+
+const SYSTEM_NOTES = [DOUBLE_CHARGE_NOTE, AMOUNT_MISMATCH_NOTE];
+
+/**
+ * Customer notes without any line that is exactly one of the payment warnings
+ * the server writes for the admin, so a customer cannot fake (or pre-empt) them.
+ */
+export function stripSystemNotes(notes: string): string {
+  return notes
+    .split("\n")
+    .filter((line) => !SYSTEM_NOTES.includes(line.trim()))
+    .join("\n")
+    .trim();
 }
 
 function qty(v: unknown, field: string): number {
@@ -166,7 +181,7 @@ function parse(body: unknown): CheckoutInput {
     locale: oneOf(r.locale, ["es", "en"] as const, "locale"),
     customer,
     fulfillment,
-    notes: text(r.notes, "notes", MAX_NOTES, false),
+    notes: stripSystemNotes(text(r.notes, "notes", MAX_NOTES, false)),
     paymentMethod: oneOf(r.paymentMethod, ["bold", "qr"] as const, "paymentMethod"),
     acceptedPolicy: true,
     items: rawItems.map(parseItem),
