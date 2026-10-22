@@ -1,3 +1,5 @@
+import type { Fulfillment } from "./delivery-zones";
+
 export type Locale = "es" | "en";
 
 export type CategoryKind = "menu" | "merch";
@@ -154,6 +156,23 @@ export interface OrderItem {
   product_name: string;
 }
 
+export type PaymentStatus = "unpaid" | "awaiting_payment" | "paid" | "rejected";
+
+export type PaymentMethod = "bold" | "qr";
+
+export type { Fulfillment } from "./delivery-zones";
+
+export interface PaymentAttempt {
+  id: string;
+  order_id: string;
+  bold_order_id: string;
+  amount: number;
+  status: "created" | "approved" | "rejected";
+  bold_payment_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Order {
   id: string;
   customer_name: string;
@@ -165,4 +184,11 @@ export interface Order {
   status: OrderStatus;
   created_at: string;
   order_items: OrderItem[];
+  fulfillment: Fulfillment;
+  delivery_zone: string | null;
+  delivery_fee: number;
+  recipient_phone: string | null;
+  payment_method: PaymentMethod;
+  payment_status: PaymentStatus;
+  paid_at: string | null;
 }
