@@ -42,6 +42,6 @@ export function newBoldOrderId(orderId: string, now: number = Date.now()): strin
   return `CRK-${orderId.slice(0, 8).toUpperCase()}-${now.toString(36).toUpperCase()}`;
 }
 
-export function isBoldConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
+export function isBoldConfigured(env: Record<string, string | undefined> = process.env): boolean {
   return Boolean(env.BOLD_IDENTITY_KEY) && Boolean(env.BOLD_SECRET_KEY);
 }
