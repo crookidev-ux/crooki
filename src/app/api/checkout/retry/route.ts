@@ -1,4 +1,4 @@
-import { createAdminClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { BOLD_MIN_AMOUNT, isBoldConfigured } from "@/lib/bold";
 import { createAttempt, OrderNotPayableError } from "@/lib/payments";
 import { retryBlockReason } from "@/lib/payments.config";
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
   if (!isBoldConfigured()) return error(503, "Online payment is not available right now");
 
   try {
-    const supabase = await createAdminClient();
+    const supabase = createServiceClient();
     const { data, error: dbError } = await supabase
       .from("orders")
       .select("id, total, customer_name, customer_email, customer_phone, payment_method, payment_status, status")

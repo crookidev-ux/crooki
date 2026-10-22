@@ -2,7 +2,7 @@
 // as {site}/api/bold/webhook. Bold expects a 200 within ~2 s and retries
 // otherwise, so: bad signature → 401, garbage with a valid signature → 200
 // (retrying won't fix it), DB failure → 500 (retry; confirmAttempt is idempotent).
-import { createAdminClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { isBoldConfigured, verifyWebhookSignature } from "@/lib/bold";
 import { confirmAttempt } from "@/lib/payments";
 
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const supabase = await createAdminClient();
+    const supabase = createServiceClient();
     await confirmAttempt(
       supabase,
       ref,

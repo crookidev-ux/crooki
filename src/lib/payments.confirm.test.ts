@@ -1,23 +1,29 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { decideConfirmation } from "./payments.confirm.ts";
+import {
+  AMOUNT_MISMATCH_NOTE,
+  decideConfirmation,
+  DOUBLE_CHARGE_NOTE,
+  withNote,
+} from "./payments.confirm.ts";
 
 const created = { status: "created", amount: 39400 };
 
 test("approved, same amount, order not paid → attempt approved, order paid, notify", () => {
   assert.deepEqual(
     decideConfirmation(created, { payment_status: "awaiting_payment" }, { kind: "approved", amount: 39400 }),
-    { attempt: "approved", order: "paid", notify: true, doubleCharge: false },
+    { attempt: "approved", order: "paid", notify: true, doubleCharge: false, checkDoubleCharge: false, amountMismatch: false },
   );
 });
 
 test("approved, different amount → nothing changes", () => {
-  const unchanged = { attempt: "unchanged", order: "unchanged", notify: false, doubleCharge: false };
+  const unchanged = { attempt: "unchanged", order: "unchanged", notify: false, doubleCharge: false, checkDoubleCharge: false, amountMismatch: false };
+  // A different amount is flagged for review (note on the order) but never marks paid.
   assert.deepEqual(
     decideConfirmation(created, { payment_status: "awaiting_payment" }, { kind: "approved", amount: 39399 }),
-    unchanged,
+    { ...unchanged, amountMismatch: true },
   );
-  // A missing amount is treated as a mismatch: never mark paid without checking it.
+  // A missing amount is never trusted either; it is only logged (no amount to compare).
   assert.deepEqual(
     decideConfirmation(created, { payment_status: "awaiting_payment" }, { kind: "approved" }),
     unchanged,
@@ -27,19 +33,33 @@ test("approved, different amount → nothing changes", () => {
 test("approved, order already paid by another attempt → double charge, no notify", () => {
   assert.deepEqual(
     decideConfirmation(created, { payment_status: "paid" }, { kind: "approved", amount: 39400 }),
-    { attempt: "approved", order: "unchanged", notify: false, doubleCharge: true },
+    { attempt: "approved", order: "unchanged", notify: false, doubleCharge: true, checkDoubleCharge: false, amountMismatch: false },
   );
 });
 
-test("approved, this attempt already approved → nothing changes (idempotent)", () => {
+test("approved, this attempt already approved + order paid → no writes, but re-check double charge in the DB", () => {
+  // Idempotent replay: no status write, no email. The caller still counts approved
+  // attempts, so a double charge whose note write failed (or that was paid by
+  // another attempt in the meantime) gets flagged on Bold's retry.
   assert.deepEqual(
     decideConfirmation(
       { status: "approved", amount: 39400 },
       { payment_status: "paid" },
       { kind: "approved", amount: 39400 },
     ),
-    { attempt: "unchanged", order: "unchanged", notify: false, doubleCharge: false },
+    { attempt: "unchanged", order: "unchanged", notify: false, doubleCharge: false, checkDoubleCharge: true, amountMismatch: false },
   );
+});
+
+test("an amount mismatch on an already-approved attempt still never touches the order", () => {
+  const d = decideConfirmation(
+    { status: "approved", amount: 39400 },
+    { payment_status: "awaiting_payment" },
+    { kind: "approved", amount: 1000 },
+  );
+  assert.equal(d.order, "unchanged");
+  assert.equal(d.notify, false);
+  assert.equal(d.amountMismatch, true);
 });
 
 test("approved, attempt approved but order write was lost → order paid on retry", () => {
@@ -50,7 +70,7 @@ test("approved, attempt approved but order write was lost → order paid on retr
       { payment_status: "awaiting_payment" },
       { kind: "approved", amount: 39400 },
     ),
-    { attempt: "unchanged", order: "paid", notify: true, doubleCharge: false },
+    { attempt: "unchanged", order: "paid", notify: true, doubleCharge: false, checkDoubleCharge: false, amountMismatch: false },
   );
 });
 
@@ -61,7 +81,7 @@ test("approved after an earlier rejection of the same attempt → paid", () => {
       { payment_status: "rejected" },
       { kind: "approved", amount: 39400 },
     ),
-    { attempt: "approved", order: "paid", notify: true, doubleCharge: false },
+    { attempt: "approved", order: "paid", notify: true, doubleCharge: false, checkDoubleCharge: false, amountMismatch: false },
   );
 });
 
@@ -75,20 +95,31 @@ test("rejected, order paid → order unchanged", () => {
 test("rejected, order not paid → attempt rejected, order rejected", () => {
   assert.deepEqual(
     decideConfirmation(created, { payment_status: "awaiting_payment" }, { kind: "rejected" }),
-    { attempt: "rejected", order: "rejected", notify: false, doubleCharge: false },
+    { attempt: "rejected", order: "rejected", notify: false, doubleCharge: false, checkDoubleCharge: false, amountMismatch: false },
   );
 });
 
 test("rejected never downgrades an approved attempt", () => {
   assert.deepEqual(
     decideConfirmation({ status: "approved", amount: 39400 }, { payment_status: "paid" }, { kind: "rejected" }),
-    { attempt: "unchanged", order: "unchanged", notify: false, doubleCharge: false },
+    { attempt: "unchanged", order: "unchanged", notify: false, doubleCharge: false, checkDoubleCharge: false, amountMismatch: false },
   );
 });
 
 test("rejected twice → second time nothing changes", () => {
   assert.deepEqual(
     decideConfirmation({ status: "rejected", amount: 39400 }, { payment_status: "rejected" }, { kind: "rejected" }),
-    { attempt: "unchanged", order: "unchanged", notify: false, doubleCharge: false },
+    { attempt: "unchanged", order: "unchanged", notify: false, doubleCharge: false, checkDoubleCharge: false, amountMismatch: false },
+  );
+});
+
+test("withNote appends once, on its own line", () => {
+  assert.equal(withNote("", DOUBLE_CHARGE_NOTE), DOUBLE_CHARGE_NOTE);
+  assert.equal(withNote(null, AMOUNT_MISMATCH_NOTE), AMOUNT_MISMATCH_NOTE);
+  assert.equal(withNote("Sin nueces", DOUBLE_CHARGE_NOTE), `Sin nueces\n${DOUBLE_CHARGE_NOTE}`);
+  assert.equal(withNote(`Sin nueces\n${DOUBLE_CHARGE_NOTE}`, DOUBLE_CHARGE_NOTE), null);
+  assert.equal(
+    withNote(`x\n${DOUBLE_CHARGE_NOTE}`, AMOUNT_MISMATCH_NOTE),
+    `x\n${DOUBLE_CHARGE_NOTE}\n${AMOUNT_MISMATCH_NOTE}`,
   );
 });

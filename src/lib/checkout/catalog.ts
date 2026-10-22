@@ -2,7 +2,7 @@
 // the database, so the prices used to charge the customer are never the
 // browser's. Import only from Route Handlers / Server Components.
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createAdminClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import type { Catalog, CatalogProduct } from "./price-cart";
 
 type ProductRow = {
@@ -143,6 +143,6 @@ export async function loadCatalog(
 
 /** Convenience for the checkout route: loads the catalog with the service role. */
 export async function loadCheckoutCatalog(productIds: string[]): Promise<Catalog> {
-  const supabase = await createAdminClient();
+  const supabase = createServiceClient();
   return loadCatalog(supabase, productIds);
 }

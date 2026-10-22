@@ -3,7 +3,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isBoldConfigured, newBoldOrderId, type BoldClientConfig } from "@/lib/bold";
 import { buildBoldClientConfig } from "@/lib/payments.config";
-import { decideConfirmation } from "@/lib/payments.confirm";
+import {
+  AMOUNT_MISMATCH_NOTE,
+  decideConfirmation,
+  DOUBLE_CHARGE_NOTE,
+  withNote,
+} from "@/lib/payments.confirm";
 import { sendPaidOrderEmail } from "@/lib/notify";
 import { after } from "next/server";
 import type { Order, OrderItem } from "@/lib/types";
@@ -69,18 +74,54 @@ export async function createAttempt(
   });
 }
 
-export const DOUBLE_CHARGE_NOTE = "⚠ Posible cobro doble: revisar en Bold";
+export { AMOUNT_MISMATCH_NOTE, DOUBLE_CHARGE_NOTE };
 
 export type ConfirmEvent = { kind: "approved" | "rejected"; amount?: number; paymentId?: string };
 
 /**
+ * Appends `note` to `orders.notes` once. Compare-and-swap on the notes read, so
+ * a concurrent edit is never overwritten; a few retries cover a lost race.
+ * Throws on DB errors so the webhook answers 500 and Bold retries the flag.
+ */
+async function appendOrderNote(supabase: SupabaseClient, orderId: string, note: string): Promise<void> {
+  for (let i = 0; i < 3; i++) {
+    const read = await supabase.from("orders").select("notes").eq("id", orderId).maybeSingle();
+    if (read.error) throw new Error(`appendOrderNote ${orderId}: read: ${read.error.message}`);
+    if (!read.data) return;
+    const current = (read.data as { notes: string | null }).notes;
+    const next = withNote(current, note);
+    if (next === null) return;
+    const base = supabase.from("orders").update({ notes: next }).eq("id", orderId);
+    const upd = await (current === null ? base.is("notes", null) : base.eq("notes", current)).select("id");
+    if (upd.error) throw new Error(`appendOrderNote ${orderId}: update: ${upd.error.message}`);
+    if (upd.data && upd.data.length > 0) return;
+  }
+  throw new Error(`appendOrderNote ${orderId}: notes kept changing`);
+}
+
+async function countApprovedAttempts(supabase: SupabaseClient, orderId: string): Promise<number> {
+  const res = await supabase
+    .from("payment_attempts")
+    .select("id", { count: "exact", head: true })
+    .eq("order_id", orderId)
+    .eq("status", "approved");
+  if (res.error) throw new Error(`countApprovedAttempts ${orderId}: ${res.error.message}`);
+  return res.count ?? 0;
+}
+
+/**
  * The ONLY code path that marks an order as paid (webhook and order-page
  * fallback both call it). Applies `decideConfirmation`; safe to repeat for the
- * same event. Every write is conditional on the state that was read, so two
- * racing deliveries cannot both win: the paid-order email goes out only from
- * the call whose update actually flipped the order to paid. Throws on DB
- * errors so the webhook answers 500 and Bold retries. An unknown
+ * same event. Every status write is conditional on the state that was read,
+ * so two racing deliveries cannot both win: the paid-order email goes out only
+ * from the call whose update actually flipped the order to paid. A double
+ * charge is derived from the DB (more than one approved attempt), so it is
+ * flagged even under races and re-flagged on retry if the note write failed.
+ * Throws on DB errors so the webhook answers 500 and Bold retries. An unknown
  * `boldOrderId` is logged and ignored.
+ *
+ * Must run inside a request scope (Route Handler / Server Component), because
+ * the email is scheduled with next/server `after()`.
  */
 export async function confirmAttempt(
   supabase: SupabaseClient,
@@ -105,11 +146,11 @@ export async function confirmAttempt(
 
   const orderRes = await supabase
     .from("orders")
-    .select("id, payment_status, notes")
+    .select("id, payment_status")
     .eq("id", attempt.order_id)
     .maybeSingle();
   if (orderRes.error) throw new Error(`${tag}: load order: ${orderRes.error.message}`);
-  const order = orderRes.data as { id: string; payment_status: string; notes: string | null } | null;
+  const order = orderRes.data as { id: string; payment_status: string } | null;
   if (!order) {
     console.error(`${tag}: order ${attempt.order_id} not found; ignored`);
     return;
@@ -119,8 +160,12 @@ export async function confirmAttempt(
   const decision = decideConfirmation({ status: attempt.status, amount }, order, event);
   const now = new Date().toISOString();
 
-  if (event.kind === "approved" && event.amount !== amount) {
+  if (event.kind === "approved" && event.amount === undefined) {
+    console.error(`${tag}: approval without an amount; order not marked paid`);
+  }
+  if (decision.amountMismatch) {
     console.error(`${tag}: amount mismatch (Bold ${event.amount}, attempt ${amount}); order not marked paid`);
+    await appendOrderNote(supabase, order.id, AMOUNT_MISMATCH_NOTE);
   }
 
   if (decision.attempt !== "unchanged") {
@@ -134,25 +179,14 @@ export async function confirmAttempt(
       .select("id");
     if (upd.error) throw new Error(`${tag}: update attempt: ${upd.error.message}`);
     if (!upd.data || upd.data.length === 0) {
-      // Another delivery of this event changed the attempt first; it owns the rest.
+      // Another delivery of this same event changed the attempt first; it owns the rest
+      // (if it fails, Bold retries and the replay re-checks everything from the DB).
       console.warn(`${tag}: attempt changed concurrently; skipped`);
       return;
     }
   }
 
-  if (decision.doubleCharge) {
-    console.error(
-      `${tag}: POSSIBLE DOUBLE CHARGE — order ${order.id} was already paid; Bold payment ${event.paymentId ?? "?"}`,
-    );
-    const notes = order.notes ?? "";
-    if (!notes.includes(DOUBLE_CHARGE_NOTE)) {
-      const upd = await supabase
-        .from("orders")
-        .update({ notes: notes ? `${notes}\n${DOUBLE_CHARGE_NOTE}` : DOUBLE_CHARGE_NOTE })
-        .eq("id", order.id);
-      if (upd.error) throw new Error(`${tag}: flag double charge: ${upd.error.message}`);
-    }
-  }
+  let checkDouble = decision.checkDoubleCharge;
 
   if (decision.order === "paid") {
     const upd = await supabase
@@ -165,9 +199,12 @@ export async function confirmAttempt(
     const flipped = Boolean(upd.data && upd.data.length > 0);
     if (flipped && decision.notify) {
       const paymentId = event.paymentId ?? attempt.bold_payment_id ?? undefined;
-      // After the response, so the webhook answers Bold quickly; never throws.
+      // after() needs a request scope (see the doc comment above). It runs once
+      // the response is sent, so the webhook answers Bold quickly; never throws.
       after(() => notifyPaid(supabase, order.id, paymentId));
     }
+    // Someone else paid the order between our read and our write: maybe another attempt.
+    if (!flipped) checkDouble = true;
   } else if (decision.order === "rejected") {
     const upd = await supabase
       .from("orders")
@@ -175,6 +212,17 @@ export async function confirmAttempt(
       .eq("id", order.id)
       .neq("payment_status", "paid");
     if (upd.error) throw new Error(`${tag}: mark order rejected: ${upd.error.message}`);
+  }
+
+  let doubleCharge = decision.doubleCharge;
+  if (!doubleCharge && checkDouble) {
+    doubleCharge = (await countApprovedAttempts(supabase, order.id)) > 1;
+  }
+  if (doubleCharge) {
+    console.error(
+      `${tag}: POSSIBLE DOUBLE CHARGE — order ${order.id} has more than one approved payment; Bold payment ${event.paymentId ?? "?"}`,
+    );
+    await appendOrderNote(supabase, order.id, DOUBLE_CHARGE_NOTE);
   }
 }
 

@@ -1,4 +1,4 @@
-import { createAdminClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { BOLD_MIN_AMOUNT, isBoldConfigured, type BoldClientConfig } from "@/lib/bold";
 import { parseCheckoutInput } from "@/lib/checkout/schema";
 import { loadCatalog } from "@/lib/checkout/catalog";
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const supabase = await createAdminClient();
+    const supabase = createServiceClient();
     const catalog = await loadCatalog(
       supabase,
       input.items.map((i) => i.productId),
