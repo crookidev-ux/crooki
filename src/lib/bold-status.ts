@@ -31,11 +31,13 @@ export function mapBoldStatus(body: unknown): BoldStatusResult | null {
   if (typeof status !== "string" || !STATUSES.has(status)) return null;
 
   const result: BoldStatusResult = { status: status as BoldPaymentStatus };
-  const amount = b.amount;
-  if (typeof amount === "object" && amount !== null) {
-    const total = (amount as Record<string, unknown>).total;
-    if (typeof total === "number" && Number.isFinite(total)) result.total = total;
-  }
+  // The voucher carries the amount as a top-level `total` (seen live in test
+  // mode); `amount.total` (the webhook's shape) is kept as a fallback.
+  const isMoney = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+  const nested =
+    typeof b.amount === "object" && b.amount !== null ? (b.amount as Record<string, unknown>).total : undefined;
+  if (isMoney(b.total)) result.total = b.total;
+  else if (isMoney(nested)) result.total = nested;
   if (typeof b.transaction_id === "string" && b.transaction_id) result.transactionId = b.transaction_id;
   return result;
 }
