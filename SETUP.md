@@ -89,6 +89,13 @@ vercel --prod
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anon key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Your Supabase service role key |
 | `NEXT_PUBLIC_SITE_URL` | https://your-domain.vercel.app |
+| `BOLD_IDENTITY_KEY` | Bold → Integraciones → Llaves de integración (production keys in Production, test keys only in `.env.local`) |
+| `BOLD_SECRET_KEY` | Same Bold environment as the identity key |
+| `RESEND_API_KEY` | Resend → API Keys |
+| `ORDER_NOTIFY_EMAIL` | Comma-separated emails that receive each new order |
+| `ORDER_NOTIFY_FROM` | `Crooki <noreply@crookibakebar.com>` |
+
+Without the two Bold keys the checkout only offers «Pagar por QR (WhatsApp)». Register the Bold webhook (production) at `https://<domain>/api/bold/webhook`.
 
 ---
 
