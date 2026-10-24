@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
+import Image from "next/image";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Link, getPathname } from "@/i18n/navigation";
 import {
@@ -11,6 +12,7 @@ import {
   Clock,
   RefreshCw,
   CircleAlert,
+  Download,
 } from "lucide-react";
 import { createServiceClient } from "@/lib/supabase/service";
 import { buildWhatsAppOrderUrl, customerNotes } from "@/lib/whatsapp";
@@ -19,6 +21,7 @@ import { AMOUNT_MISMATCH_NOTE, ConcurrentUpdateError, confirmAttempt } from "@/l
 import { hasSystemNote } from "@/lib/payments.confirm";
 import { retryBlockReason } from "@/lib/payments.config";
 import { isBoldConfigured } from "@/lib/bold";
+import { deliveryFeeSettled } from "@/lib/delivery-zones";
 import type { Order, OrderItem, PaymentAttempt } from "@/lib/types";
 import OrderPaymentActions from "@/components/order/OrderPaymentActions";
 
@@ -141,12 +144,17 @@ export default async function OrderConfirmationPage({
     ? (attempts.find((a) => a.status === "approved" && a.bold_payment_id)?.bold_payment_id ?? null)
     : null;
 
+  // QR order with a final total: the page shows the shop's QR and WhatsApp is
+  // for sending the receipt. A «Consultar» delivery agrees the fee first.
+  const qrPay = view === "qr" && deliveryFeeSettled(order);
+
   const whatsappUrl = buildWhatsAppOrderUrl({
     ...order,
     total: Number(order.total),
     delivery_fee: Number(order.delivery_fee) || 0,
     bold_payment_id: paymentId,
     payment_review: view === "review",
+    qr_receipt: qrPay,
   });
 
   const total = Number(order.total);
@@ -170,7 +178,7 @@ export default async function OrderConfirmationPage({
     confirming: { Icon: Clock, title: t("confirming_title"), body: t("confirming_body") },
     review: { Icon: Clock, title: t("review_title"), body: t("review_body") },
     failed: { Icon: CircleAlert, title: t("failed_title"), body: t("failed_body") },
-    qr: { Icon: CheckCircle2, title: t("title"), body: t("subtitle") },
+    qr: { Icon: CheckCircle2, title: t("title"), body: qrPay ? t("qr_subtitle") : t("subtitle") },
   }[view];
   const HeaderIcon = header.Icon;
 
@@ -250,6 +258,58 @@ export default async function OrderConfirmationPage({
           </div>
         )}
 
+        {qrPay && (
+          <>
+            <section
+              aria-labelledby="qr-pay-title"
+              className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-left mb-4"
+            >
+              <h2 id="qr-pay-title" className="font-heading text-xl font-bold mb-1" style={{ color: BRAND }}>
+                {t("qr_pay_title")}
+              </h2>
+              <p className="text-sm text-gray-600">
+                {t("qr_amount_label")}{" "}
+                <span className="font-black text-2xl whitespace-nowrap" style={{ color: BRAND }}>
+                  ${total.toLocaleString("es-CO")}
+                </span>
+              </p>
+              {/* Served as-is (already a small webp) so the QR's modules stay sharp. */}
+              <Image
+                src="/pagos/qr-bold-breb.webp"
+                alt={t("qr_image_alt")}
+                width={720}
+                height={742}
+                unoptimized
+                className="w-full max-w-xs h-auto mx-auto my-4"
+              />
+              <a
+                href="/pagos/qr-bold-breb.png"
+                download="QR-Crooki.png"
+                className="flex items-center justify-center gap-2 font-semibold py-3 rounded-full border-2 transition-colors hover:bg-[#8b0031]/5 text-sm mb-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8b0031]"
+                style={{ borderColor: BRAND, color: BRAND }}
+              >
+                <Download aria-hidden="true" className="w-4 h-4" />
+                {t("qr_save")}
+              </a>
+              <ol className="list-decimal pl-5 space-y-2 text-sm text-gray-700">
+                <li>{t("qr_step_scan")}</li>
+                <li>{t("qr_step_amount", { amount: `$${total.toLocaleString("es-CO")}` })}</li>
+                <li>{t("qr_step_receipt")}</li>
+              </ol>
+            </section>
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-3 text-white font-bold py-4 px-6 rounded-full transition-opacity hover:opacity-90 text-lg mb-6 shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8b0031]"
+              style={{ backgroundColor: "#25D366" }}
+            >
+              <MessageCircle aria-hidden="true" className="w-5 h-5 shrink-0" />
+              {t("qr_send_receipt")}
+            </a>
+          </>
+        )}
+
         {/* Resumen del pedido */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-left mb-6">
           <div className="flex items-center gap-2 mb-4">
@@ -316,7 +376,7 @@ export default async function OrderConfirmationPage({
           </dl>
         </div>
 
-        {view === "qr" && (
+        {view === "qr" && !qrPay && (
           <>
             <div
               className="rounded-2xl p-4 mb-6 text-sm text-left"

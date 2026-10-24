@@ -55,6 +55,19 @@ export function zoneAllowed(zoneId: string, cart: { hasFood: boolean }): boolean
   return zoneId === OUTSIDE_CITY_ZONE_ID ? !cart.hasFood : true;
 }
 
+/**
+ * Whether a placed order's total is final: false only for a delivery whose fee
+ * is still «Consultar» (stored as 0, agreed later over WhatsApp). Money
+ * columns come back from Supabase as strings, so both are accepted.
+ */
+export function deliveryFeeSettled(order: {
+  fulfillment: Fulfillment | null;
+  delivery_fee: number | string | null;
+}): boolean {
+  if (order.fulfillment === "pickup" || order.fulfillment === "dine_in") return true;
+  return order.fulfillment === "delivery" && Number(order.delivery_fee) > 0;
+}
+
 export function onlinePaymentAllowed(
   zone: DeliveryZone | undefined,
   fulfillment: Fulfillment,

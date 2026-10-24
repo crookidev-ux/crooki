@@ -4,7 +4,8 @@
 // attempt (new bold_order_id) and reopens Bold's checkout with it. The
 // secondary «Pagar por QR (WhatsApp)» first switches the order to QR payment
 // on the server (so the admin does not show it as an unpaid Bold order), then
-// sends the order to the shop over WhatsApp.
+// refreshes the page, which shows the shop's QR (a Bold order always has a
+// final total) and the WhatsApp button to send the receipt.
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -66,27 +67,16 @@ export default function OrderPaymentActions({ orderId, locale, canRetry }: Props
     inFlight.current = true;
     setPending("qr");
     setError(null);
-    // Opened synchronously inside the tap so pop-up blockers allow it; it is
-    // pointed at WhatsApp once the server has switched the order.
-    const win = window.open("", "_blank");
     try {
       const res = await fetch("/api/checkout/switch-to-qr", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ orderId }),
       });
-      const data = (await res.json().catch(() => ({}))) as { whatsappUrl?: string };
-      if (res.ok && data.whatsappUrl) {
-        if (win) {
-          win.opener = null;
-          win.location.href = data.whatsappUrl;
-        } else {
-          window.location.href = data.whatsappUrl;
-        }
+      if (res.ok) {
         router.refresh();
         return;
       }
-      win?.close();
       if (res.status === 409) {
         // Paid, closed or under review meanwhile: show the current state.
         router.refresh();
@@ -95,7 +85,6 @@ export default function OrderPaymentActions({ orderId, locale, canRetry }: Props
       setError(t("qr_switch_error"));
     } catch (err) {
       console.error(err);
-      win?.close();
       setError(t("qr_switch_error"));
     } finally {
       inFlight.current = false;

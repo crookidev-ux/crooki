@@ -74,6 +74,11 @@ test("paid order carries the Bold reference", () => {
   assert.ok(noRef.includes("✅ *Pagado en línea*"));
 });
 
+test("an order paid by QR tells the shop the receipt comes attached", () => {
+  assert.ok(lines({ ...delivery, qr_receipt: true }).includes("🧾 *Pagué por QR · adjunto el comprobante*"));
+  assert.ok(!lines(delivery).some((x) => x.includes("Pagué por QR")));
+});
+
 test("an order under payment review is flagged for the shop", () => {
   assert.ok(lines({ ...delivery, payment_review: true }).includes("⚠ *Pago por revisar*"));
   assert.ok(!lines(delivery).some((x) => x.includes("Pago por revisar")));

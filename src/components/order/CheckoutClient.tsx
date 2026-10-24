@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useCartStore } from "@/store/cart";
 import { useRouter, Link } from "@/i18n/navigation";
 import { toast } from "sonner";
-import { ShoppingBag, ArrowLeft, Loader2, CreditCard, QrCode, Info } from "lucide-react";
+import { ShoppingBag, ArrowLeft, Loader2, CreditCard, QrCode, Info, MessageCircle } from "lucide-react";
 import {
   allowedFulfillments,
   getZone,
@@ -343,9 +343,12 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
   const payByQr = async () => {
     if (inFlight.current || busy || !validate()) return;
     inFlight.current = true;
-    // Open a placeholder window synchronously inside the user gesture so the
-    // browser doesn't block the WhatsApp pop-up after the awaited request.
-    const waWindow = window.open("", "_blank");
+    // With a final total the order page shows the shop's QR and the customer
+    // writes on WhatsApp after paying. Only a «Consultar» destination (fee
+    // agreed over WhatsApp) goes to WhatsApp right away: open a placeholder
+    // window synchronously inside the user gesture so the browser doesn't
+    // block the pop-up after the awaited request.
+    const waWindow = zoneBlocksOnline ? window.open("", "_blank") : null;
     setPending("qr");
     try {
       const { res, data } = await postCheckout(JSON.stringify(buildBody("qr")));
@@ -354,11 +357,13 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
         handleFailure(res.status, data);
         return;
       }
-      if (waWindow && !waWindow.closed) {
-        waWindow.location.href = data.whatsappUrl;
-      } else {
-        // Pop-up blocked: same-tab navigation so the message still reaches WhatsApp.
-        window.location.href = data.whatsappUrl;
+      if (zoneBlocksOnline) {
+        if (waWindow && !waWindow.closed) {
+          waWindow.location.href = data.whatsappUrl;
+        } else {
+          // Pop-up blocked: same-tab navigation so the message still reaches WhatsApp.
+          window.location.href = data.whatsappUrl;
+        }
       }
       clearCart();
       setStartedOrderId(data.orderId);
@@ -721,10 +726,12 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
                 >
                   {pending === "qr" ? (
                     <Loader2 aria-hidden="true" className="w-5 h-5 animate-spin" />
+                  ) : zoneBlocksOnline ? (
+                    <MessageCircle aria-hidden="true" className="w-5 h-5" />
                   ) : (
                     <QrCode aria-hidden="true" className="w-5 h-5" />
                   )}
-                  {pending === "qr" ? t("submitting") : t("pay_qr")}
+                  {pending === "qr" ? t("submitting") : zoneBlocksOnline ? t("order_whatsapp") : t("pay_qr")}
                 </button>
               </div>
             </div>

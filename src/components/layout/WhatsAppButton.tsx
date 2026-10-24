@@ -1,11 +1,17 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { usePathname } from "@/i18n/navigation";
 
 const WHATSAPP_URL = "https://wa.me/573027190084";
 
 export default function WhatsAppButton() {
   const t = useTranslations("contact");
+  const pathname = usePathname();
+
+  // An order's page has its own WhatsApp button, and the floating one would
+  // cover the payment QR while the customer scans it.
+  if (/^\/pedido\/[^/]+/.test(pathname)) return null;
 
   return (
     <a

@@ -109,7 +109,7 @@
     "delivery_fee": "Domicilio",
     "subtotal": "Subtotal",
     "pay": "Pagar {amount}",
-    "pay_qr": "Pagar por QR (WhatsApp)",
+    "pay_qr": "Pagar con QR",
     "pay_qr_only_note": "Para este destino confirmamos el domicilio por WhatsApp",
     "merch_delivery_only": "La mercancía se entrega a domicilio",
     "price_changed": "Actualizamos los precios de tu pedido. Revisa el total antes de pagar.",
@@ -119,7 +119,8 @@
     "back_to_menu": "Volver al menú",
     "email_invalid": "Revisa tu correo electrónico",
     "payment_opening": "Abriendo el pago…",
-    "view_order": "Ver mi pedido"
+    "view_order": "Ver mi pedido",
+    "order_whatsapp": "Pedir por WhatsApp"
   },
   "confirmation": {
     "title": "¡Pedido recibido!",
@@ -138,13 +139,13 @@
     "confirming_body": "Tu banco ya respondió, pero la confirmación puede tardar unos minutos en llegarnos. Recarga esta página en un momento.",
     "reload": "Recargar",
     "failed_title": "El pago no se completó",
-    "failed_body": "Puedes intentarlo de nuevo o pagar por QR y te atendemos por WhatsApp.",
+    "failed_body": "Puedes intentarlo de nuevo o pagar con QR.",
     "retry": "Intentar de nuevo",
     "retrying": "Abriendo el pago…",
     "retry_error": "No pudimos abrir el pago. Inténtalo de nuevo.",
     "pay_unavailable": "El pago en línea no está disponible en este momento",
-    "pay_qr": "Pagar por QR (WhatsApp)",
-    "qr_switch_error": "No pudimos abrir WhatsApp. Inténtalo de nuevo.",
+    "pay_qr": "Pagar con QR",
+    "qr_switch_error": "No pudimos cambiar el pago a QR. Inténtalo de nuevo.",
     "summary": "Resumen",
     "delivery_fee": "Domicilio",
     "total": "Total",
@@ -158,7 +159,16 @@
     "notes": "Notas",
     "review_title": "Estamos revisando tu pago",
     "review_body": "Recibimos un pago que debemos revisar antes de confirmar tu pedido. No lo intentes de nuevo: escríbenos por WhatsApp y lo resolvemos.",
-    "contact_whatsapp": "Escríbenos por WhatsApp"
+    "contact_whatsapp": "Escríbenos por WhatsApp",
+    "qr_subtitle": "Último paso: paga con el QR y envíanos el comprobante por WhatsApp.",
+    "qr_pay_title": "Paga con QR",
+    "qr_amount_label": "Valor a pagar:",
+    "qr_image_alt": "Código QR de Crooki para pagar con Bre-B desde la app de cualquier banco o billetera",
+    "qr_save": "Guardar QR en el celular",
+    "qr_step_scan": "Abre la app de tu banco o billetera y escanea el QR. Si estás en el celular, guárdalo y súbelo desde la galería.",
+    "qr_step_amount": "Escribe el valor exacto: {amount}.",
+    "qr_step_receipt": "Toma una captura del comprobante y envíanosla por WhatsApp. Empezamos a preparar tu pedido apenas lo confirmemos.",
+    "qr_send_receipt": "Ya pagué: enviar comprobante"
   },
   "admin": {
     "dashboard": "Panel de administración",

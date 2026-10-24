@@ -6,6 +6,7 @@ import {
   allowedFulfillments,
   zoneAllowed,
   onlinePaymentAllowed,
+  deliveryFeeSettled,
   OUTSIDE_CITY_ZONE_ID,
 } from "./delivery-zones.ts";
 import { DELIVERY_ZONES } from "./delivery-zones.data.ts";
@@ -46,6 +47,15 @@ test("zoneAllowed blocks food outside the city", () => {
   assert.equal(zoneAllowed("fuera-de-cartagena", { hasFood: true }), false);
   assert.equal(zoneAllowed("fuera-de-cartagena", { hasFood: false }), true);
   assert.equal(zoneAllowed("bocagrande", { hasFood: true }), true);
+});
+
+test("deliveryFeeSettled: the total is final unless a delivery fee is still to be agreed", () => {
+  assert.equal(deliveryFeeSettled({ fulfillment: "delivery", delivery_fee: 8500 }), true);
+  assert.equal(deliveryFeeSettled({ fulfillment: "delivery", delivery_fee: 0 }), false);
+  assert.equal(deliveryFeeSettled({ fulfillment: "delivery", delivery_fee: "0.00" }), false);
+  assert.equal(deliveryFeeSettled({ fulfillment: "pickup", delivery_fee: 0 }), true);
+  assert.equal(deliveryFeeSettled({ fulfillment: "dine_in", delivery_fee: 0 }), true);
+  assert.equal(deliveryFeeSettled({ fulfillment: null, delivery_fee: 0 }), false);
 });
 
 test("onlinePaymentAllowed", () => {

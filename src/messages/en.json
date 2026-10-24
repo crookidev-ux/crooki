@@ -109,7 +109,7 @@
     "delivery_fee": "Delivery",
     "subtotal": "Subtotal",
     "pay": "Pay {amount}",
-    "pay_qr": "Pay by QR (WhatsApp)",
+    "pay_qr": "Pay with QR",
     "pay_qr_only_note": "For this destination we confirm the delivery fee over WhatsApp",
     "merch_delivery_only": "Merchandise is delivered to your door",
     "price_changed": "We updated the prices in your order. Check the total before paying.",
@@ -119,7 +119,8 @@
     "back_to_menu": "Back to menu",
     "email_invalid": "Please check your email address",
     "payment_opening": "Opening the payment…",
-    "view_order": "View my order"
+    "view_order": "View my order",
+    "order_whatsapp": "Order via WhatsApp"
   },
   "confirmation": {
     "title": "Order received!",
@@ -138,13 +139,13 @@
     "confirming_body": "Your bank has already answered, but the confirmation can take a few minutes to reach us. Reload this page in a moment.",
     "reload": "Reload",
     "failed_title": "The payment didn't go through",
-    "failed_body": "You can try again or pay by QR and we'll help you on WhatsApp.",
+    "failed_body": "You can try again or pay with QR.",
     "retry": "Try again",
     "retrying": "Opening payment…",
     "retry_error": "We couldn't open the payment. Please try again.",
     "pay_unavailable": "Online payment is not available right now",
-    "pay_qr": "Pay by QR (WhatsApp)",
-    "qr_switch_error": "We couldn't open WhatsApp. Please try again.",
+    "pay_qr": "Pay with QR",
+    "qr_switch_error": "We couldn't switch the payment to QR. Please try again.",
     "summary": "Summary",
     "delivery_fee": "Delivery",
     "total": "Total",
@@ -158,7 +159,16 @@
     "notes": "Notes",
     "review_title": "We're reviewing your payment",
     "review_body": "We received a payment we need to review before confirming your order. Please don't try again: message us on WhatsApp and we'll sort it out.",
-    "contact_whatsapp": "Message us on WhatsApp"
+    "contact_whatsapp": "Message us on WhatsApp",
+    "qr_subtitle": "Last step: pay with the QR code and send us the receipt on WhatsApp.",
+    "qr_pay_title": "Pay with QR",
+    "qr_amount_label": "Amount to pay:",
+    "qr_image_alt": "Crooki QR code to pay with Bre-B from any bank or wallet app",
+    "qr_save": "Save QR to your phone",
+    "qr_step_scan": "Open your bank or wallet app and scan the QR code. On your phone, save it and upload it from your gallery.",
+    "qr_step_amount": "Enter the exact amount: {amount}.",
+    "qr_step_receipt": "Take a screenshot of the receipt and send it to us on WhatsApp. We start preparing your order as soon as we confirm it.",
+    "qr_send_receipt": "I paid: send receipt"
   },
   "admin": {
     "dashboard": "Admin panel",

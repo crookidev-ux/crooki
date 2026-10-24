@@ -27,6 +27,8 @@ export interface WhatsAppOrder {
   bold_payment_id?: string | null;
   /** Bold took money but the order is not marked paid: the shop must check it. */
   payment_review?: boolean;
+  /** Sent after paying with the shop's QR: the customer attaches the receipt. */
+  qr_receipt?: boolean;
   order_items: WhatsAppOrderItem[];
 }
 
@@ -93,6 +95,7 @@ export function buildWhatsAppMessage(order: WhatsAppOrder): string {
     `*Total: ${money(order.total)}*`,
     paidLine,
     order.payment_status !== "paid" && order.payment_review ? `⚠ *Pago por revisar*` : null,
+    order.qr_receipt ? `🧾 *Pagué por QR · adjunto el comprobante*` : null,
     ``,
     `*Entrega:* ${fulfillmentLine(order.fulfillment, order.delivery_zone)}`,
     `*Cliente:* ${order.customer_name}`,
