@@ -1,0 +1,128 @@
+/* Seasonal hero decoration. Everything is decorative (aria-hidden) and lets
+   clicks through, except the .sz-peek character beside the hero photo. */
+
+.sz-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* A full-width track that slides across the hero; its child sits at the
+   track's left edge, so translateX(%) of the track = position in the hero. */
+.sz-track {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  animation: sz-cross linear infinite;
+}
+@keyframes sz-cross {
+  from { transform: translateX(-12%); }
+  to { transform: translateX(105%); }
+}
+
+.sz-bob { animation: sz-bob 3.2s ease-in-out infinite; }
+@keyframes sz-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+
+.sz-flap { animation: sz-flap 0.32s ease-in-out infinite alternate; transform-origin: center; }
+@keyframes sz-flap {
+  from { transform: scaleY(1); }
+  to { transform: scaleY(0.55); }
+}
+
+.sz-flicker { animation: sz-flicker 2.6s ease-in-out infinite; }
+@keyframes sz-flicker {
+  0%, 100% { opacity: 0.95; }
+  40% { opacity: 0.55; }
+  55% { opacity: 1; }
+  70% { opacity: 0.7; }
+}
+
+.sz-sway { transform-origin: top center; animation: sz-sway 4.5s ease-in-out infinite; }
+@keyframes sz-sway {
+  0%, 100% { transform: rotate(-4deg); }
+  50% { transform: rotate(4deg); }
+}
+
+/* Falling particles (snow, confetti). --rest is where each one sits when
+   motion is reduced. */
+.sz-fall {
+  position: absolute;
+  top: -12px;
+  animation: sz-fall linear infinite;
+}
+@keyframes sz-fall {
+  from { transform: translate(0, 0) rotate(0deg); }
+  to { transform: translate(var(--dx, 0px), 820px) rotate(var(--spin, 0deg)); }
+}
+
+/* Rising particles (hearts). */
+.sz-rise {
+  position: absolute;
+  bottom: -40px;
+  animation: sz-rise ease-in infinite;
+}
+@keyframes sz-rise {
+  0% { transform: translate(0, 0); opacity: 0; }
+  12% { opacity: var(--o, 0.5); }
+  85% { opacity: var(--o, 0.5); }
+  100% { transform: translate(var(--dx, 0px), -760px); opacity: 0; }
+}
+
+/* Fireworks: a ring of sparks that blooms and fades. */
+.sz-burst { animation: sz-burst 3.6s ease-out infinite; transform-origin: center; }
+@keyframes sz-burst {
+  0%, 8% { transform: scale(0.15); opacity: 0; }
+  20% { opacity: 1; }
+  55% { transform: scale(1); opacity: 0; }
+  100% { transform: scale(1); opacity: 0; }
+}
+
+.sz-glow { animation: sz-glow 6s ease-in-out infinite; }
+@keyframes sz-glow {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.85; }
+}
+
+/* The character beside the photo: hides on click, comes back. */
+.sz-peek {
+  position: absolute;
+  z-index: 2;
+  pointer-events: auto;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  padding: 0;
+  transition: transform 0.5s cubic-bezier(0.5, -0.4, 0.4, 1.4), opacity 0.4s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.sz-peek:hover { transform: scale(1.06) rotate(-3deg); }
+.sz-peek.sz-hide { transform: var(--hide, translateY(30px) scale(0.6)); opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sz-track,
+  .sz-bob,
+  .sz-flap,
+  .sz-flicker,
+  .sz-sway,
+  .sz-burst,
+  .sz-glow {
+    animation: none !important;
+  }
+  .sz-track { transform: translateX(var(--rest-x, 40%)); }
+  .sz-burst { transform: scale(1); opacity: 0.6; }
+  .sz-fall {
+    animation: none !important;
+    transform: translate(0, var(--rest, 120px)) rotate(var(--spin, 0deg));
+  }
+  .sz-rise {
+    animation: none !important;
+    transform: translate(0, calc(-1 * var(--rest, 200px)));
+    opacity: var(--o, 0.5);
+  }
+  .sz-peek { transition: opacity 0.2s ease; }
+  .sz-peek:hover { transform: none; }
+}
