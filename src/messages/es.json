@@ -17,6 +17,15 @@
     "location": "Centro Histórico · Cartagena · Todos los días 11 a.m. – 9 p.m.",
     "image_alt": "Galletas Crooki apiladas junto a su caja"
   },
+  "seasons": {
+    "san-valentin": "¡Feliz San Valentín!",
+    "carnaval": "¡Quien lo vive es quien lo goza!",
+    "semana-santa": "Feliz Semana Santa",
+    "amor-amistad": "¡Feliz Amor y Amistad!",
+    "halloween": "¡Feliz Halloween!",
+    "noviembre": "¡Felices Fiestas de Independencia!",
+    "navidad": "¡Feliz Navidad!"
+  },
   "featured": {
     "title": "Nuestros sabores",
     "subtitle": "Cada galleta es una obra de arte hecha con los mejores ingredientes"

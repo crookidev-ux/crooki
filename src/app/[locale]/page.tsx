@@ -6,6 +6,8 @@ import FeaturedProducts from "@/components/home/FeaturedProducts";
 import AboutSection from "@/components/home/AboutSection";
 import type { Product } from "@/lib/types";
 import { mockProducts } from "@/lib/mock-products";
+import { parseActiveSeason, type SeasonId } from "@/lib/seasons";
+import { getActiveSeason } from "@/lib/seasons.data";
 
 async function getProducts(): Promise<Product[]> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("your_")) {
@@ -47,17 +49,29 @@ export async function generateMetadata({
   };
 }
 
+// In development only, ?temporada=<id> (or ?temporada=ninguna) previews a
+// season without touching the real setting.
+function previewSeason(value: string | undefined): SeasonId | null | undefined {
+  if (process.env.NODE_ENV === "production" || value === undefined) return undefined;
+  return value === "ninguna" ? null : parseActiveSeason(value);
+}
+
 export default async function HomePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ temporada?: string }>;
 }) {
   const { locale } = await params;
-  const products = await getProducts();
+  const { temporada } = await searchParams;
+  const [products, activeSeason] = await Promise.all([getProducts(), getActiveSeason()]);
+  const preview = previewSeason(temporada);
+  const season = preview === undefined ? activeSeason : preview;
 
   return (
     <>
-      <Hero locale={locale} />
+      <Hero locale={locale} season={season} />
       <FeaturedProducts products={products} locale={locale} />
       <AboutSection locale={locale} />
     </>

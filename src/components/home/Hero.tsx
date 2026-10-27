@@ -3,23 +3,38 @@ import { getTranslations } from "next-intl/server";
 import { Cookie, MapPin } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import Crumbs from "@/components/layout/Crumbs";
+import SeasonDecor from "@/components/seasons/SeasonDecor";
+import SeasonIcon from "@/components/seasons/SeasonIcon";
+import type { SeasonId } from "@/lib/seasons";
 
-export default async function Hero({ locale }: { locale: string }) {
+export default async function Hero({ locale, season }: { locale: string; season: SeasonId | null }) {
   const t = await getTranslations({ locale, namespace: "hero" });
+  const ts = await getTranslations({ locale, namespace: "seasons" });
 
   return (
     <section
       className="relative overflow-hidden text-white"
       style={{ backgroundColor: "#8b0031" }}
     >
-      <Crumbs className="opacity-70" />
+      {/* Crumbs step back while a season decorates the corners */}
+      <Crumbs className={season ? "opacity-30" : "opacity-70"} />
+      {season && <SeasonDecor season={season} part="ambient" />}
 
       <div className="relative max-w-6xl mx-auto px-4 pt-14 pb-16 md:py-20 grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
         {/* Copy */}
         <div className="text-center lg:text-left">
           <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-full px-4 py-2 text-sm font-semibold mb-6 border border-white/25">
-            <Cookie className="w-4 h-4 text-[#f3c78b]" aria-hidden="true" />
-            {t("badge")}
+            {season ? (
+              <>
+                <SeasonIcon season={season} className="w-4 h-4 text-[#f3c78b]" />
+                {ts(season)}
+              </>
+            ) : (
+              <>
+                <Cookie className="w-4 h-4 text-[#f3c78b]" aria-hidden="true" />
+                {t("badge")}
+              </>
+            )}
           </div>
 
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05] mb-6">
@@ -64,6 +79,7 @@ export default async function Hero({ locale }: { locale: string }) {
             sizes="(min-width: 1024px) 448px, (min-width: 640px) 384px, 90vw"
             className="relative w-full h-auto max-h-[70vh] object-cover rounded-[2rem] shadow-2xl"
           />
+          {season && <SeasonDecor season={season} part="companion" />}
         </div>
       </div>
     </section>

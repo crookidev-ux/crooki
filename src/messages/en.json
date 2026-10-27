@@ -17,6 +17,15 @@
     "location": "Historic Center · Cartagena · Every day 11 a.m. – 9 p.m.",
     "image_alt": "Stack of Crooki cookies next to their box"
   },
+  "seasons": {
+    "san-valentin": "Happy Valentine's Day!",
+    "carnaval": "Live it to love it!",
+    "semana-santa": "Happy Holy Week",
+    "amor-amistad": "Happy Love & Friendship Day!",
+    "halloween": "Happy Halloween!",
+    "noviembre": "Happy Independence Festivities!",
+    "navidad": "Merry Christmas!"
+  },
   "featured": {
     "title": "Our flavors",
     "subtitle": "Each cookie is a masterpiece made with the finest ingredients"
