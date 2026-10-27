@@ -6,6 +6,8 @@ import type { Fulfillment } from "@/lib/delivery-zones";
 import type { PaymentStatus } from "@/lib/types";
 
 export const WHATSAPP_NUMBER = "573027190084";
+// Same as SITE_URL in @/lib/seo (not imported: node:test cannot resolve the alias).
+const ORDER_PAGE_BASE = "https://www.crookibakebar.com/pedido/";
 
 export interface WhatsAppOrderItem {
   product_name: string;
@@ -82,6 +84,8 @@ export function buildWhatsAppMessage(order: WhatsAppOrder): string {
     `🍪 *Nuevo pedido Crooki*`,
     ``,
     `*Pedido #${orderId}*`,
+    // Stays in the customer's chat: their way back to the order's status.
+    `Estado del pedido: ${ORDER_PAGE_BASE}${order.id}`,
     ``,
     `*Productos:*`,
     itemLines,

@@ -28,6 +28,7 @@ export default function Header({ locale }: { locale: string }) {
     { href: "/menu", label: t("menu") },
     { href: "/merch", label: t("merch") },
     { href: "/legal/terminos-club-crooki", label: t("club") },
+    { href: "/mi-pedido", label: t("my_order") },
   ];
 
   const switchLocale = (newLocale: string) => {

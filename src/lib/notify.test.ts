@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildPaidOrderEmail, parseRecipients } from "./notify.ts";
+import { buildCustomerOrderEmail, buildPaidOrderEmail, parseRecipients } from "./notify.ts";
 
 const order = {
   id: "3f2a9c1e-aaaa-bbbb-cccc-000000000000",
@@ -68,4 +68,17 @@ test("pickup: no address or zone lines; numeric strings from the DB are formatte
 test("parseRecipients splits a comma list and drops blanks", () => {
   assert.deepEqual(parseRecipients(" a@x.co, b@y.co ,,"), ["a@x.co", "b@y.co"]);
   assert.deepEqual(parseRecipients(""), []);
+});
+
+test("buildCustomerOrderEmail links the order page in both languages", () => {
+  const id = "a7d97215-c8fb-44a4-a7bd-0c80882d3219";
+  const paid = buildCustomerOrderEmail({ id, customer_name: "Silvia Mantilla", total: "65000" }, "paid");
+  assert.equal(paid.subject, "Pago recibido · Pedido #A7D97215 — Crooki");
+  assert.ok(paid.text.includes(`https://www.crookibakebar.com/pedido/${id}`));
+  assert.ok(paid.text.includes("¡Hola Silvia!"));
+  assert.ok(paid.text.includes("Hi Silvia!"));
+  assert.ok(paid.text.includes("$65.000"));
+  const received = buildCustomerOrderEmail({ id, customer_name: "", total: 38000 }, "received");
+  assert.equal(received.subject, "Pedido recibido #A7D97215 — Crooki");
+  assert.ok(received.text.includes("¡Hola! Recibimos tu pedido #A7D97215"));
 });

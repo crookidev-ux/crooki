@@ -16,14 +16,15 @@ import {
 } from "lucide-react";
 import { createServiceClient } from "@/lib/supabase/service";
 import { buildWhatsAppOrderUrl, customerNotes } from "@/lib/whatsapp";
-import { fetchBoldStatus } from "@/lib/bold-status";
-import { AMOUNT_MISMATCH_NOTE, ConcurrentUpdateError, confirmAttempt } from "@/lib/payments";
+import { AMOUNT_MISMATCH_NOTE } from "@/lib/payments";
+import { reconcileBoldOrder } from "@/lib/payments.reconcile";
 import { hasSystemNote } from "@/lib/payments.confirm";
 import { retryBlockReason } from "@/lib/payments.config";
 import { isBoldConfigured } from "@/lib/bold";
 import { deliveryFeeSettled } from "@/lib/delivery-zones";
 import type { Order, OrderItem, PaymentAttempt } from "@/lib/types";
 import OrderPaymentActions from "@/components/order/OrderPaymentActions";
+import AutoRefresh from "@/components/order/AutoRefresh";
 
 // Checkout and order pages are private: keep them out of search results.
 export const metadata: Metadata = { robots: { index: false, follow: false } };
@@ -84,39 +85,15 @@ export default async function OrderConfirmationPage({
 
   if (order.payment_method === "bold") {
     attempts = await loadAttempts(supabase, order.id);
-    const latest = attempts[0];
     // Fallback for a late webhook: ask Bold about the latest attempt. Any
-    // failure here is logged and the page shows what the database says.
-    // Only an attempt still `created` can change; final ones need no Bold call.
-    if (order.payment_status !== "paid" && latest?.status === "created") {
-      try {
-        const status = await fetchBoldStatus(latest.bold_order_id);
-        if (status?.status === "APPROVED") {
-          // Bold's reported amount, so the amount check in confirmAttempt is meaningful.
-          await confirmAttempt(supabase, latest.bold_order_id, {
-            kind: "approved",
-            amount: status.total,
-            paymentId: status.transactionId,
-          });
-        } else if (status?.status === "REJECTED" || status?.status === "FAILED") {
-          await confirmAttempt(supabase, latest.bold_order_id, { kind: "rejected" });
-        } else if (status?.status === "PENDING" || status?.status === "PROCESSING") {
-          boldPending = true;
-        }
-        if (status?.status === "APPROVED" || status?.status === "REJECTED" || status?.status === "FAILED") {
-          order = (await loadOrder(supabase, id)) ?? order;
-          attempts = await loadAttempts(supabase, order.id);
-        }
-      } catch (e) {
-        if (e instanceof ConcurrentUpdateError) {
-          // Another writer changed the attempt meanwhile: show the fresh state,
-          // and «confirming» rather than offering a new charge.
-          boldPending = true;
-          order = (await loadOrder(supabase, id)) ?? order;
-          attempts = await loadAttempts(supabase, order.id);
-        } else {
-          console.error(`[pedido] payment status fallback failed for order ${id}`, e);
-        }
+    // failure is logged and the page shows what the database says.
+    if (order.payment_status !== "paid" && attempts[0]?.status === "created") {
+      const result = await reconcileBoldOrder(supabase, order.id);
+      // Pending, or another writer changed the attempt: «confirming», never a new charge.
+      boldPending = result === "pending";
+      if (result !== "unchanged") {
+        order = (await loadOrder(supabase, id)) ?? order;
+        attempts = await loadAttempts(supabase, order.id);
       }
     }
   }
@@ -208,6 +185,8 @@ export default async function OrderConfirmationPage({
               <span className="font-mono font-bold text-gray-700 break-all">{paymentId}</span>
             </>
           )}
+          <br />
+          <span className="inline-block mt-2">{t("lookup_hint")}</span>
         </p>
 
         {/* Paid: sending the receipt is how the shop learns about the order. */}
@@ -234,6 +213,7 @@ export default async function OrderConfirmationPage({
             {t("reload")}
           </a>
         )}
+        {view === "confirming" && <AutoRefresh label={t("auto_refresh")} />}
 
         {view === "review" && (
           <a

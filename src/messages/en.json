@@ -5,7 +5,8 @@
     "order": "Order now",
     "admin": "Admin",
     "merch": "Merch",
-    "club": "Club Crooki"
+    "club": "Club Crooki",
+    "my_order": "My order"
   },
   "hero": {
     "badge": "Artisan · Made with love",
@@ -136,7 +137,7 @@
     "send_receipt": "Send receipt via WhatsApp",
     "payment_ref": "Payment reference",
     "confirming_title": "We're confirming your payment…",
-    "confirming_body": "Your bank has already answered, but the confirmation can take a few minutes to reach us. Reload this page in a moment.",
+    "confirming_body": "Your bank has already answered and we are waiting for the confirmation. This page updates by itself; don't close it or pay again.",
     "reload": "Reload",
     "failed_title": "The payment didn't go through",
     "failed_body": "You can try again or pay with QR.",
@@ -168,7 +169,9 @@
     "qr_step_scan": "Open your bank or wallet app and scan the QR code. On your phone, save it and upload it from your gallery.",
     "qr_step_amount": "Enter the exact amount: {amount}.",
     "qr_step_receipt": "Take a screenshot of the receipt and send it to us on WhatsApp. We start preparing your order as soon as we confirm it.",
-    "qr_send_receipt": "I paid: send receipt"
+    "qr_send_receipt": "I paid: send receipt",
+    "auto_refresh": "Updating automatically…",
+    "lookup_hint": "Keep your order number: with it and your phone you can check the status in “My order”."
   },
   "admin": {
     "dashboard": "Admin panel",
@@ -261,5 +264,21 @@
     "merch_description": "Exclusive Crooki caps, tees and tote bags. Take a little piece of Crooki and Cartagena with you.",
     "legal_description": "Crooki Bake Bar policies and terms: data processing, cookies and Club Crooki.",
     "og_alt": "Crooki Bake Bar · Artisan cookies in Cartagena"
+  },
+  "lookup": {
+    "title": "My order",
+    "subtitle": "Check the status of your order and payment with your order number and phone.",
+    "code_label": "Order number",
+    "code_hint": "It's 8 letters and numbers. You'll find it on the order page and in the WhatsApp message you sent us.",
+    "phone_label": "Phone you used to order",
+    "submit": "See my order",
+    "searching": "Searching…",
+    "error_invalid": "Check the order number (8 letters and numbers) and your phone.",
+    "error_not_found": "We couldn't find an order with that number and phone. Check the details and try again.",
+    "error_too_many": "Too many tries in a row. Wait a minute and try again.",
+    "error_generic": "We couldn't look up your order. Please try again in a moment.",
+    "help": "Don't have your order number?",
+    "whatsapp": "Ask us on WhatsApp",
+    "whatsapp_text": "Hi Crooki! I'd like to know the status of my order."
   }
 }

@@ -2,6 +2,9 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { Package, ShoppingBag, Plus, Tag, TriangleAlert } from "lucide-react";
 import { requireAdmin } from "@/lib/admin-auth";
+import { isBoldConfigured } from "@/lib/bold";
+import { reconcileRecentBoldOrders } from "@/lib/payments.reconcile";
+import { createServiceClient } from "@/lib/supabase/service";
 import type { CategoryRow, Product } from "@/lib/types";
 import {
   countsAsPending,
@@ -41,6 +44,10 @@ export default async function AdminDashboardPage({
 
   const t = await getTranslations({ locale, namespace: "admin" });
   const { supabase } = await requireAdmin(locale);
+
+  // A lost Bold webhook must not hide a paid order: re-check recent unpaid
+  // ones with Bold before listing (this also sends the late shop email).
+  if (isBoldConfigured()) await reconcileRecentBoldOrders(createServiceClient());
 
   const [{ data: categories }, { data: products }, { data: orders }] = await Promise.all([
     supabase.from("categories").select("*").order("kind").order("display_order"),

@@ -153,6 +153,7 @@ export default function Footer() {
               <Link href="/menu" className={link}>{t("menu")}</Link>
               <Link href="/merch" className={link}>{t("merch")}</Link>
               <Link href="/legal/terminos-club-crooki" className={link}>{tf("club")}</Link>
+              <Link href="/mi-pedido" className={link}>{t("my_order")}</Link>
             </nav>
           </div>
         </div>

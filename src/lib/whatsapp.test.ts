@@ -100,3 +100,7 @@ test("URL points at the shop number with the encoded message", () => {
   assert.ok(url.startsWith(`https://wa.me/${WHATSAPP_NUMBER}?text=`));
   assert.equal(decodeURIComponent(url.split("?text=")[1]), buildWhatsAppMessage(delivery));
 });
+
+test("message carries the link to the order page", () => {
+  assert.ok(lines(delivery).includes(`Estado del pedido: https://www.crookibakebar.com/pedido/${delivery.id}`));
+});

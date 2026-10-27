@@ -78,6 +78,90 @@ export function buildPaidOrderEmail(
   };
 }
 
+export type CustomerEmailKind = "received" | "paid";
+
+export type CustomerOrderEmailInput = { id: string; customer_name: string; total: Money };
+
+// Same as SITE_URL in @/lib/seo (not imported: node:test cannot resolve the alias).
+const ORDER_PAGE_BASE = "https://www.crookibakebar.com/pedido/";
+
+/**
+ * Pure: the customer's email with the link back to their order page. Orders
+ * do not store the checkout language, so it is bilingual (Spanish first).
+ * «received» = QR order placed; «paid» = Bold payment confirmed.
+ */
+export function buildCustomerOrderEmail(
+  order: CustomerOrderEmailInput,
+  kind: CustomerEmailKind,
+): { subject: string; text: string } {
+  const shortId = order.id.slice(0, 8).toUpperCase();
+  const url = `${ORDER_PAGE_BASE}${order.id}`;
+  const name = order.customer_name.trim().split(/\s+/)[0] || "";
+  const total = money(order.total);
+
+  const es =
+    kind === "paid"
+      ? [`¡Hola${name ? ` ${name}` : ""}! Recibimos tu pago de ${total} para el pedido #${shortId}.`, "Si aún no lo hiciste, envíanos el comprobante por WhatsApp para empezar a prepararlo."]
+      : [
+          `¡Hola${name ? ` ${name}` : ""}! Recibimos tu pedido #${shortId} por ${total}.`,
+          "Si aún no lo has hecho, paga con el QR y envíanos el comprobante por WhatsApp.",
+        ];
+  const en =
+    kind === "paid"
+      ? [`Hi${name ? ` ${name}` : ""}! We received your ${total} payment for order #${shortId}.`, "If you haven't yet, send us the receipt on WhatsApp so we can start preparing it."]
+      : [
+          `Hi${name ? ` ${name}` : ""}! We received your order #${shortId} for ${total}.`,
+          "If you haven't yet, pay with the QR code and send us the receipt on WhatsApp.",
+        ];
+
+  return {
+    subject:
+      kind === "paid"
+        ? `Pago recibido · Pedido #${shortId} — Crooki`
+        : `Pedido recibido #${shortId} — Crooki`,
+    text: [
+      ...es,
+      "",
+      `Mira el estado de tu pedido aquí: ${url}`,
+      `También puedes buscarlo en «Mi pedido» con el número #${shortId} y tu teléfono.`,
+      "",
+      "—",
+      "",
+      ...en,
+      "",
+      `Check your order status here: ${url}`,
+      `You can also find it in “My order” with number #${shortId} and your phone.`,
+      "",
+      "Crooki Bake Bar · Calle 36 # 5-70, Centro Histórico, Cartagena · WhatsApp +57 302 719 0084",
+    ].join("\n"),
+  };
+}
+
+/** Emails the customer the link to their order. Does nothing without RESEND_API_KEY or an email; never throws. */
+export async function sendCustomerOrderEmail(
+  order: CustomerOrderEmailInput & { customer_email: string | null },
+  kind: CustomerEmailKind,
+): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const to = order.customer_email?.trim();
+  if (!apiKey || !to) return;
+
+  try {
+    const { subject, text } = buildCustomerOrderEmail(order, kind);
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: process.env.ORDER_NOTIFY_FROM || DEFAULT_FROM, to: [to], subject, text }),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) {
+      console.error(`[notify] customer email HTTP ${res.status} for order ${order.id}: ${await res.text().catch(() => "")}`);
+    }
+  } catch (e) {
+    console.error(`[notify] customer email failed for order ${order.id}`, e);
+  }
+}
+
 export async function sendPaidOrderEmail(
   order: Order & { order_items: OrderItem[] },
   boldPaymentId?: string,

@@ -5,7 +5,8 @@
     "order": "Pedir ahora",
     "admin": "Administrador",
     "merch": "Merch",
-    "club": "Club Crooki"
+    "club": "Club Crooki",
+    "my_order": "Mi pedido"
   },
   "hero": {
     "badge": "Artesanal · Hecho con amor",
@@ -136,7 +137,7 @@
     "send_receipt": "Enviar comprobante por WhatsApp",
     "payment_ref": "Referencia de pago",
     "confirming_title": "Estamos confirmando tu pago…",
-    "confirming_body": "Tu banco ya respondió, pero la confirmación puede tardar unos minutos en llegarnos. Recarga esta página en un momento.",
+    "confirming_body": "Tu banco ya respondió y estamos esperando la confirmación. Esta página se actualiza sola; no la cierres ni pagues de nuevo.",
     "reload": "Recargar",
     "failed_title": "El pago no se completó",
     "failed_body": "Puedes intentarlo de nuevo o pagar con QR.",
@@ -168,7 +169,9 @@
     "qr_step_scan": "Abre la app de tu banco o billetera y escanea el QR. Si estás en el celular, guárdalo y súbelo desde la galería.",
     "qr_step_amount": "Escribe el valor exacto: {amount}.",
     "qr_step_receipt": "Toma una captura del comprobante y envíanosla por WhatsApp. Empezamos a preparar tu pedido apenas lo confirmemos.",
-    "qr_send_receipt": "Ya pagué: enviar comprobante"
+    "qr_send_receipt": "Ya pagué: enviar comprobante",
+    "auto_refresh": "Actualizando automáticamente…",
+    "lookup_hint": "Guarda tu número de pedido: con él y tu teléfono puedes ver el estado en «Mi pedido»."
   },
   "admin": {
     "dashboard": "Panel de administración",
@@ -261,5 +264,21 @@
     "merch_description": "Gorras, camisetas y tote bags exclusivos de Crooki. Llévate un pedacito de Crooki y de Cartagena contigo.",
     "legal_description": "Políticas y términos de Crooki Bake Bar: tratamiento de datos, cookies y Club Crooki.",
     "og_alt": "Crooki Bake Bar · Galletas artesanales en Cartagena"
+  },
+  "lookup": {
+    "title": "Mi pedido",
+    "subtitle": "Consulta el estado de tu pedido y de tu pago con el número de pedido y tu teléfono.",
+    "code_label": "Número de pedido",
+    "code_hint": "Son 8 letras y números. Lo ves en la página del pedido y en el mensaje de WhatsApp que nos enviaste.",
+    "phone_label": "Teléfono que usaste al pedir",
+    "submit": "Ver mi pedido",
+    "searching": "Buscando…",
+    "error_invalid": "Revisa el número de pedido (8 letras y números) y tu teléfono.",
+    "error_not_found": "No encontramos un pedido con ese número y teléfono. Revisa los datos e intenta de nuevo.",
+    "error_too_many": "Hiciste muchos intentos seguidos. Espera un minuto e intenta de nuevo.",
+    "error_generic": "No pudimos buscar tu pedido. Intenta de nuevo en un momento.",
+    "help": "¿No tienes el número de pedido?",
+    "whatsapp": "Pregúntanos por WhatsApp",
+    "whatsapp_text": "¡Hola Crooki! Quiero saber el estado de mi pedido."
   }
 }

@@ -11,7 +11,7 @@ import {
   hasSystemNote,
   withNote,
 } from "@/lib/payments.confirm";
-import { sendPaidOrderEmail } from "@/lib/notify";
+import { sendCustomerOrderEmail, sendPaidOrderEmail } from "@/lib/notify";
 import { after } from "next/server";
 import type { Order, OrderItem } from "@/lib/types";
 
@@ -280,7 +280,8 @@ async function notifyPaid(supabase: SupabaseClient, orderId: string, paymentId?:
       console.error(`[notify] could not load order ${orderId} for the email`, error);
       return;
     }
-    await sendPaidOrderEmail(data as Order & { order_items: OrderItem[] }, paymentId);
+    const order = data as Order & { order_items: OrderItem[] };
+    await Promise.all([sendPaidOrderEmail(order, paymentId), sendCustomerOrderEmail(order, "paid")]);
   } catch (e) {
     console.error(`[notify] paid-order email failed for order ${orderId}`, e);
   }

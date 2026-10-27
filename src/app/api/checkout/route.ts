@@ -10,6 +10,8 @@ import {
 } from "@/lib/checkout/order-payload";
 import { createAttempt, OrderNotPayableError } from "@/lib/payments";
 import { buildWhatsAppOrderUrl } from "@/lib/whatsapp";
+import { sendCustomerOrderEmail } from "@/lib/notify";
+import { after } from "next/server";
 
 type CheckoutResponse = {
   orderId: string;
@@ -64,6 +66,13 @@ export async function POST(request: Request) {
     if (input.paymentMethod === "qr") {
       response.whatsappUrl = buildWhatsAppOrderUrl(
         buildWhatsAppOrder(orderId, payload, priced.lines),
+      );
+      // After the response, so the customer is not kept waiting; never throws.
+      after(() =>
+        sendCustomerOrderEmail(
+          { id: orderId, customer_name: payload.customer_name, customer_email: payload.customer_email, total: priced.total },
+          "received",
+        ),
       );
     } else {
       // The order exists from here on: on failure return its id so the client
