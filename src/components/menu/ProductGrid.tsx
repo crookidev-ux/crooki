@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useTranslations } from "next-intl";
 import type { BoxSelection, CategoryRow, Product } from "@/lib/types";
 import { CATEGORY_ORDER } from "@/lib/types";
@@ -91,10 +92,12 @@ function ProductCard({
   return (
     <div className="group rounded-3xl overflow-hidden bg-white border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
       <div className="relative h-72 overflow-hidden bg-gray-50">
-        <img
+        <Image
           src={imageUrl}
           alt={name}
-          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+          fill
+          sizes="(min-width: 1024px) 360px, (min-width: 640px) 50vw, 100vw"
+          className="object-cover transition-transform duration-700 group-hover:scale-110"
           onError={(e) => {
             (e.target as HTMLImageElement).style.display = "none";
           }}

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useTranslations } from "next-intl";
 import type { Product } from "@/lib/types";
 import { useCartStore } from "@/store/cart";
@@ -43,10 +44,12 @@ export default function FeaturedProducts({ products, locale }: Props) {
               >
                 {/* Image */}
                 <div className="relative h-64 overflow-hidden bg-gray-100">
-                  <img
+                  <Image
                     src={imageUrl}
                     alt={name}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    fill
+                    sizes="(min-width: 1024px) 360px, (min-width: 640px) 50vw, 100vw"
+                    className="object-cover transition-transform duration-500 group-hover:scale-105"
                   />
                   {!product.available && (
                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center">

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { Plus, Check } from "lucide-react";
 import { useState } from "react";
@@ -32,10 +33,12 @@ function MerchCard({ product, locale }: { product: Product; locale: string }) {
   return (
     <div className="rounded-3xl overflow-hidden bg-white border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
       <div className="relative aspect-square overflow-hidden bg-gray-50">
-        <img
+        <Image
           src={imageUrl}
           alt={name}
-          className="w-full h-full object-cover"
+          fill
+          sizes="(min-width: 1024px) 360px, (min-width: 640px) 50vw, 100vw"
+          className="object-cover"
           onError={(e) => {
             (e.target as HTMLImageElement).style.display = "none";
           }}

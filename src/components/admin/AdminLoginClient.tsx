@@ -7,7 +7,7 @@ import { useTranslations } from "next-intl";
 import { Loader2, Lock } from "lucide-react";
 import { toast } from "sonner";
 
-export default function AdminLoginClient({ locale }: { locale: string }) {
+export default function AdminLoginClient() {
   const t = useTranslations("admin");
   const router = useRouter();
   const [email, setEmail] = useState("");

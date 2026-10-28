@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useCartStore } from "@/store/cart";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
@@ -80,12 +81,8 @@ export default function CartDrawer() {
                     className="flex gap-3 items-start pb-4 border-b border-gray-100 last:border-0"
                   >
                     {/* Image */}
-                    <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
-                      <img
-                        src={imageUrl}
-                        alt={name}
-                        className="w-full h-full object-cover"
-                      />
+                    <div className="relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
+                      <Image src={imageUrl} alt={name} fill sizes="80px" className="object-cover" />
                     </div>
 
                     {/* Info */}

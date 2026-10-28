@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
 import AdminNav from "@/components/admin/AdminNav";
 
 export default async function AdminLayout({

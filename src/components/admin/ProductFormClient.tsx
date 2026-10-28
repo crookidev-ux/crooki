@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo, useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "@/i18n/navigation";
@@ -608,9 +609,11 @@ export default function ProductFormClient({
             <div className="flex flex-wrap gap-3 mb-4">
               {existingImages.map((img) => (
                 <div key={img.id} className="relative group">
-                  <img
+                  <Image
                     src={img.url}
                     alt=""
+                    width={96}
+                    height={96}
                     className="w-24 h-24 rounded-xl object-cover border border-gray-200"
                   />
                   <button
@@ -630,6 +633,8 @@ export default function ProductFormClient({
             <div className="flex flex-wrap gap-3 mb-4">
               {newImagePreviews.map((url, i) => (
                 <div key={i} className="relative group">
+                  {/* Local blob: preview of a file not uploaded yet; next/image can't load it */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={url}
                     alt=""

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { Package, ShoppingBag, Plus, Tag, TriangleAlert } from "lucide-react";
@@ -209,12 +210,14 @@ export default async function AdminDashboardPage({
                         key={p.id}
                         className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 transition-colors"
                       >
-                        <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
+                        <div className="relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
                           {p.product_images?.[0]?.url ? (
-                            <img
+                            <Image
                               src={p.product_images[0].url}
                               alt={p.name_es}
-                              className="w-full h-full object-cover"
+                              fill
+                              sizes="56px"
+                              className="object-cover"
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-2xl">

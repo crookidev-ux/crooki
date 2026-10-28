@@ -4,7 +4,7 @@ import Image from "next/image";
 import { getTranslations } from "next-intl/server";
 import { mockMerch } from "@/lib/mock-products";
 import MerchGrid from "@/components/menu/MerchGrid";
-import type { CategoryRow, Product } from "@/lib/types";
+import type { Product } from "@/lib/types";
 import Crumbs from "@/components/layout/Crumbs";
 
 async function loadMerch(): Promise<Product[]> {
