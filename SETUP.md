@@ -106,6 +106,15 @@ Once deployed:
 - Login: `admin@crooki.com` + password you set in Supabase Auth
 - Create/edit products with photos
 - View and manage orders
+- Switch on a seasonal home decoration (`/admin/temporadas`): one season at a time, or none
+
+### Seasonal decoration (Temporadas)
+
+- Seven seasons: San Valentín, Carnaval de Barranquilla, Semana Santa, Amor y Amistad, Halloween, Fiestas de Noviembre, Navidad. Switched on **by hand** from the admin; there are no automatic dates.
+- Stored in the single-row table `site_settings.active_season` (`supabase/migrations/20261027000000_site_settings_season.sql`, applied in production on 2026-10-28). Public read; only signed-in users can update.
+- Only the hero changes: decoration behind/beside the content (`src/components/seasons/`) and a greeting in the badge (`seasons` namespace in `src/messages/*.json`). Seasons never promise products.
+- Local preview without touching the setting: `http://localhost:3001/?temporada=<id>` or `?temporada=ninguna` (ignored in production).
+- Design and plan: `docs/superpowers/specs/2026-10-27-temporadas-design.md`, `docs/superpowers/plans/2026-10-27-temporadas.md`.
 
 ---
 
@@ -120,3 +129,4 @@ Once deployed:
 | `/admin` | Admin dashboard |
 | `/admin/login` | Admin login |
 | `/admin/productos/nuevo` | Create product |
+| `/admin/temporadas` | Seasonal home decoration |
