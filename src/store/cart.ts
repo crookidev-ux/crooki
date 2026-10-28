@@ -11,6 +11,8 @@ import type {
 interface CartStore {
   items: CartItem[];
   isOpen: boolean;
+  // False until the saved cart is read from localStorage (see CartHydrator).
+  hydrated: boolean;
   addItem: (product: Product) => void;
   addCombo: (product: Product, selection: ComboSelection, unitPrice: number) => void;
   addBox: (product: Product, selection: BoxSelection, unitPrice: number) => void;
@@ -56,6 +58,7 @@ export const useCartStore = create<CartStore>()(
     (set, get) => ({
       items: [],
       isOpen: false,
+      hydrated: false,
 
       addItem: (product: Product) => {
         const { items } = get();
@@ -168,6 +171,12 @@ export const useCartStore = create<CartStore>()(
     }),
     {
       name: "crooki-cart",
+      // The server renders an empty cart, so the saved one is loaded only after
+      // hydration (CartHydrator); reading it earlier broke hydration (React #418)
+      // for every visitor with items in the cart.
+      skipHydration: true,
+      partialize: (s) => ({ items: s.items, isOpen: s.isOpen }),
+      onRehydrateStorage: () => () => useCartStore.setState({ hydrated: true }),
       // Bump the persist version so previously stored carts (which lacked
       // `lineId`) are discarded rather than crashing the store.
       version: 2,

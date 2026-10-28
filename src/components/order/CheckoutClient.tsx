@@ -145,7 +145,7 @@ function Section({ title, children }: { title?: string; children: React.ReactNod
 export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs }: Props) {
   const t = useTranslations("checkout");
   const tCart = useTranslations("cart");
-  const { items, total, clearCart } = useCartStore();
+  const { items, total, clearCart, hydrated } = useCartStore();
   const router = useRouter();
   const bold = useBoldCheckout(boldEnabled);
   const formRef = useRef<HTMLFormElement>(null);
@@ -386,6 +386,15 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
     if (method === "bold") void payOnline();
     else void payByQr();
   };
+
+  // Until the saved cart loads, show a loader instead of the empty-cart state.
+  if (!hydrated) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center" role="status" aria-label={tCart("title")}>
+        <Loader2 aria-hidden="true" className="w-8 h-8 animate-spin" style={{ color: BRAND }} />
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     if (startedOrderId) {

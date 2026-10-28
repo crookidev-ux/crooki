@@ -9,6 +9,7 @@ import Footer from "@/components/layout/Footer";
 import WhatsAppButton from "@/components/layout/WhatsAppButton";
 import { Toaster } from "@/components/ui/sonner";
 import CartDrawer from "@/components/order/CartDrawer";
+import CartHydrator from "@/components/order/CartHydrator";
 
 export async function generateMetadata({
   params,
@@ -85,6 +86,7 @@ export default async function LocaleLayout({
       <Header locale={locale} />
       <main className="flex-1">{children}</main>
       <Footer />
+      <CartHydrator />
       <CartDrawer />
       <WhatsAppButton />
       <Toaster position="bottom-center" />
