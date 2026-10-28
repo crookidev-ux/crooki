@@ -21,28 +21,26 @@ export default function AdminNav({ locale, user }: Props) {
     router.push("/admin/login");
   };
 
+  const links = [
+    { href: `/${locale}/admin`, icon: Package, label: t("products") },
+    { href: `/${locale}/admin/categorias`, icon: Tag, label: "Categorías" },
+    { href: `/${locale}/admin/temporadas`, icon: Sparkles, label: "Temporadas" },
+    { href: `/${locale}/admin#orders`, icon: ShoppingBag, label: t("orders") },
+  ];
+
   return (
-    <div style={{ backgroundColor: "#8b0031" }} className="text-white shadow-lg">
+    // Sticks right under the store header (h-16) instead of sliding beneath it.
+    <div style={{ backgroundColor: "#8b0031" }} className="sticky top-16 z-40 text-white shadow-lg">
       <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
         <div className="flex items-center gap-6">
           <span className="font-black text-xl tracking-tight">CROOKI Admin</span>
           <nav className="hidden md:flex items-center gap-5 text-sm">
-            <a href={`/${locale}/admin`} className="text-white/80 hover:text-white flex items-center gap-1.5 transition-colors">
-              <Package className="w-4 h-4" />
-              {t("products")}
-            </a>
-            <a href={`/${locale}/admin/categorias`} className="text-white/80 hover:text-white flex items-center gap-1.5 transition-colors">
-              <Tag className="w-4 h-4" />
-              Categorías
-            </a>
-            <a href={`/${locale}/admin/temporadas`} className="text-white/80 hover:text-white flex items-center gap-1.5 transition-colors">
-              <Sparkles className="w-4 h-4" />
-              Temporadas
-            </a>
-            <a href={`/${locale}/admin#orders`} className="text-white/80 hover:text-white flex items-center gap-1.5 transition-colors">
-              <ShoppingBag className="w-4 h-4" />
-              {t("orders")}
-            </a>
+            {links.map(({ href, icon: Icon, label }) => (
+              <a key={href} href={href} className="text-white/80 hover:text-white flex items-center gap-1.5 transition-colors">
+                <Icon className="w-4 h-4" />
+                {label}
+              </a>
+            ))}
           </nav>
         </div>
         <div className="flex items-center gap-4">
@@ -56,6 +54,19 @@ export default function AdminNav({ locale, user }: Props) {
           </button>
         </div>
       </div>
+      {/* Phones: the same links as a swipeable row */}
+      <nav className="md:hidden flex gap-2 overflow-x-auto px-4 pb-3 text-sm [scrollbar-width:none]">
+        {links.map(({ href, icon: Icon, label }) => (
+          <a
+            key={href}
+            href={href}
+            className="shrink-0 flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-white/90"
+          >
+            <Icon className="w-4 h-4" />
+            {label}
+          </a>
+        ))}
+      </nav>
     </div>
   );
 }

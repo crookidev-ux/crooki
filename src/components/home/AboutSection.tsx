@@ -29,7 +29,7 @@ export default async function AboutSection({ locale }: { locale: string }) {
             </div>
             {/* Floating badge */}
             <div
-              className="absolute -bottom-6 -right-6 w-32 h-32 rounded-full flex items-center justify-center text-white font-black text-center text-sm shadow-xl"
+              className="absolute -bottom-6 -right-2 md:-right-6 w-32 h-32 rounded-full flex items-center justify-center text-white font-black text-center text-sm shadow-xl"
               style={{ backgroundColor: "#8b0031" }}
             >
               <div>
