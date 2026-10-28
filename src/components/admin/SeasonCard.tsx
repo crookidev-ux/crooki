@@ -5,32 +5,34 @@ import { useRouter } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import SeasonIcon from "@/components/seasons/SeasonIcon";
-import { SEASON_NAMES_ES, type SeasonId } from "@/lib/seasons";
+import { SEASON_NAMES_ES, seasonSaved, type SeasonId } from "@/lib/seasons";
 
 interface Props {
   season: SeasonId;
   active: boolean;
+  disabled?: boolean;
 }
 
 // One card per season on /admin/temporadas. Only one season can be on: the
 // setting is a single row, so switching one on replaces the previous one.
-export default function SeasonCard({ season, active }: Props) {
+export default function SeasonCard({ season, active, disabled = false }: Props) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const name = SEASON_NAMES_ES[season];
 
   const handleToggle = async () => {
-    if (saving) return;
+    if (saving || disabled) return;
     setSaving(true);
 
     const supabase = createClient();
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("site_settings")
       .update({ active_season: active ? null : season, updated_at: new Date().toISOString() })
-      .eq("id", 1);
+      .eq("id", 1)
+      .select("id");
 
-    if (error) {
-      toast.error(`Error: ${error.message}`);
+    if (!seasonSaved(error, data)) {
+      toast.error(error ? `Error: ${error.message}` : "No se guardó: revisa tu sesión o el ajuste de temporadas.");
     } else {
       toast.success(active ? `${name} apagada` : `${name} activa en la página de inicio`);
       router.refresh();
@@ -61,13 +63,13 @@ export default function SeasonCard({ season, active }: Props) {
             type="checkbox"
             checked={active}
             onChange={handleToggle}
-            disabled={saving}
+            disabled={saving || disabled}
             className="sr-only"
             aria-label={`Activar ${name}`}
           />
           <div
             className="w-12 h-6 rounded-full transition-colors"
-            style={{ backgroundColor: active ? "#8b0031" : "#d1d5db", opacity: saving ? 0.6 : 1 }}
+            style={{ backgroundColor: active ? "#8b0031" : "#d1d5db", opacity: saving || disabled ? 0.6 : 1 }}
           >
             <div
               className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform"

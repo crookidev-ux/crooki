@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { SEASON_IDS, SEASON_NAMES_ES, parseActiveSeason } from "./seasons.ts";
+import { SEASON_IDS, SEASON_NAMES_ES, parseActiveSeason, seasonSaved } from "./seasons.ts";
 
 test("there are seven seasons, each with a Spanish name", () => {
   assert.equal(SEASON_IDS.length, 7);
@@ -18,4 +18,11 @@ test("parseActiveSeason rejects anything else", () => {
   assert.equal(parseActiveSeason(undefined), null);
   assert.equal(parseActiveSeason(3), null);
   assert.equal(parseActiveSeason(""), null);
+});
+
+test("seasonSaved needs no error and an updated row", () => {
+  assert.equal(seasonSaved(null, [{ id: 1 }]), true);
+  assert.equal(seasonSaved(null, []), false); // row missing or blocked by RLS
+  assert.equal(seasonSaved(null, null), false);
+  assert.equal(seasonSaved({ message: "x" }, [{ id: 1 }]), false);
 });

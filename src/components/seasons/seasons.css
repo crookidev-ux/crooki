@@ -99,7 +99,10 @@
   transition: transform 0.5s cubic-bezier(0.5, -0.4, 0.4, 1.4), opacity 0.4s ease;
   -webkit-tap-highlight-color: transparent;
 }
-.sz-peek:hover { transform: scale(1.06) rotate(-3deg); }
+/* Hover only where a real pointer exists: on phones a tap would leave it tilted */
+@media (hover: hover) {
+  .sz-peek:hover { transform: scale(1.06) rotate(-3deg); }
+}
 .sz-peek.sz-hide { transform: var(--hide, translateY(30px) scale(0.6)); opacity: 0; }
 
 @media (prefers-reduced-motion: reduce) {

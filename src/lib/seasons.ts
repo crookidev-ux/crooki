@@ -29,3 +29,9 @@ export function parseActiveSeason(value: unknown): SeasonId | null {
     ? (value as SeasonId)
     : null;
 }
+
+// Supabase returns no error when an update matches zero rows (row missing,
+// or RLS blocked it), so a save only counts if a row came back.
+export function seasonSaved(error: unknown, rows: unknown[] | null): boolean {
+  return !error && Array.isArray(rows) && rows.length > 0;
+}

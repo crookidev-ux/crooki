@@ -46,7 +46,7 @@ export default async function AdminSeasonsPage({
 
       <div className="grid gap-3 sm:grid-cols-2">
         {SEASON_IDS.map((id) => (
-          <SeasonCard key={id} season={id} active={active === id} />
+          <SeasonCard key={id} season={id} active={active === id} disabled={!!error || !data} />
         ))}
       </div>
     </div>
