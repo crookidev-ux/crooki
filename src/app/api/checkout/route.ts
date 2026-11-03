@@ -11,6 +11,7 @@ import {
 import { createAttempt, OrderNotPayableError } from "@/lib/payments";
 import { buildWhatsAppOrderUrl } from "@/lib/whatsapp";
 import { sendCustomerOrderEmail } from "@/lib/notify";
+import { storeStatus } from "@/lib/store-hours";
 import { after } from "next/server";
 
 type CheckoutResponse = {
@@ -39,6 +40,17 @@ export async function POST(request: Request) {
     return error(503, "Online payment is not available right now");
   }
 
+  // Closed (9 p.m. – 11 a.m.): the order is prepared at the next opening, and
+  // only once the customer has confirmed that. The client clock is not trusted.
+  const hours = storeStatus();
+  if (!hours.open) {
+    const closed = { error: "The shop is closed", closed: true, opensAt: hours.opensAt };
+    if (input.fulfillment === "dine_in" || !input.scheduleAccepted) {
+      return Response.json(closed, { status: 409 });
+    }
+  }
+  const scheduledFor = hours.open ? null : hours.opensAt;
+
   try {
     const supabase = createServiceClient();
     const catalog = await loadCatalog(
@@ -52,7 +64,7 @@ export async function POST(request: Request) {
       return error(400, `Online payment requires a total of at least ${BOLD_MIN_AMOUNT} COP`);
     }
 
-    const payload = buildOrderPayload(input, priced);
+    const payload = buildOrderPayload(input, priced, scheduledFor);
     const { data: orderId, error: rpcError } = await supabase.rpc("create_order_v2", {
       p_order: payload,
       p_items: buildOrderItems(priced.lines),

@@ -2,6 +2,7 @@
 // RESEND_API_KEY, so import it only from server code. Without RESEND_API_KEY or
 // ORDER_NOTIFY_EMAIL it does nothing; it never throws.
 import type { Fulfillment, Order, OrderItem } from "@/lib/types";
+import { scheduledLabelEs } from "./store-hours.ts";
 
 const DEFAULT_FROM = "Crooki <noreply@crookibakebar.com>";
 
@@ -26,6 +27,7 @@ export type PaidOrderEmailInput = {
   delivery_zone: string | null;
   delivery_fee: Money;
   recipient_phone: string | null;
+  scheduled_for?: string | null;
   order_items: Array<{ product_name: string; quantity: number; unit_price: Money }>;
 };
 
@@ -53,6 +55,7 @@ export function buildPaidOrderEmail(
 
   const lines: Array<string | null> = [
     `Pedido #${shortId} pagado con Bold.`,
+    order.scheduled_for ? `PROGRAMADO: ${scheduledLabelEs(order.scheduled_for)} (se pidió con el local cerrado).` : null,
     "",
     `Entrega: ${fulfillment}`,
     isDelivery && order.delivery_zone ? `Barrio: ${order.delivery_zone}` : null,
@@ -73,7 +76,7 @@ export function buildPaidOrderEmail(
   ];
 
   return {
-    subject: `Pedido pagado #${shortId} — ${money(order.total)}`,
+    subject: `${order.scheduled_for ? "[PROGRAMADO] " : ""}Pedido pagado #${shortId} — ${money(order.total)}`,
     text: lines.filter((l) => l !== null).join("\n"),
   };
 }

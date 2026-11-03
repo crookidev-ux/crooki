@@ -191,4 +191,6 @@ export interface Order {
   payment_method: PaymentMethod;
   payment_status: PaymentStatus;
   paid_at: string | null;
+  /** Placed while the shop was closed: prepared at this opening (ISO). */
+  scheduled_for?: string | null;
 }

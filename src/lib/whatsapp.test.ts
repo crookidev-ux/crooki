@@ -104,3 +104,9 @@ test("URL points at the shop number with the encoded message", () => {
 test("message carries the link to the order page", () => {
   assert.ok(lines(delivery).includes(`Estado del pedido: https://www.crookibakebar.com/pedido/${delivery.id}`));
 });
+
+test("a scheduled order tells the shop when to prepare it", () => {
+  const l = lines({ ...delivery, scheduled_for: "2026-11-03T16:00:00.000Z" });
+  assert.ok(l.includes("🕚 *PROGRAMADO:* martes, 3 de noviembre, desde las 11 a. m."));
+  assert.ok(!lines(delivery).some((x) => x.includes("PROGRAMADO")));
+});

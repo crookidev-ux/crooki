@@ -130,7 +130,12 @@
     "email_invalid": "Please check your email address",
     "payment_opening": "Opening the payment…",
     "view_order": "View my order",
-    "order_whatsapp": "Order via WhatsApp"
+    "order_whatsapp": "Order via WhatsApp",
+    "closed_title": "The shop is closed",
+    "closed_body": "We're open every day from 11 a.m. to 9 p.m. You can order now and we'll prepare it on {day}, from 11 a.m.",
+    "closed_accept": "I understand my order will be prepared when the shop next opens",
+    "closed_required": "Please confirm your order will be prepared when we open",
+    "closed_now": "The shop just closed. Check the notice and confirm to schedule your order."
   },
   "confirmation": {
     "title": "Order received!",
@@ -180,7 +185,9 @@
     "qr_step_receipt": "Take a screenshot of the receipt and send it to us on WhatsApp. We start preparing your order as soon as we confirm it.",
     "qr_send_receipt": "I paid: send receipt",
     "auto_refresh": "Updating automatically…",
-    "lookup_hint": "Keep your order number: with it and your phone you can check the status in “My order”."
+    "lookup_hint": "Keep your order number: with it and your phone you can check the status in “My order”.",
+    "scheduled": "Scheduled",
+    "scheduled_value": "{day}, from 11 a.m."
   },
   "admin": {
     "dashboard": "Admin panel",
@@ -221,7 +228,8 @@
     "upload_images": "Upload images",
     "drag_drop": "Drag images here or click to select",
     "no_products": "No products yet",
-    "no_orders": "No orders yet"
+    "no_orders": "No orders yet",
+    "scheduled_badge": "Scheduled · {day}"
   },
   "contact": {
     "whatsapp": "Chat with us on WhatsApp",
@@ -289,5 +297,10 @@
     "help": "Don't have your order number?",
     "whatsapp": "Ask us on WhatsApp",
     "whatsapp_text": "Hi Crooki! I'd like to know the status of my order."
+  },
+  "hours": {
+    "closed_today": "We're closed. We open today at 11 a.m.",
+    "closed_tomorrow": "We're closed for today. We open tomorrow at 11 a.m.",
+    "closed_cta": "You can still schedule your order"
   }
 }

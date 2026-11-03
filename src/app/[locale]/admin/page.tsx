@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
+import { openingDayLabel } from "@/lib/store-hours";
 import { Package, ShoppingBag, Plus, Tag, TriangleAlert } from "lucide-react";
 import { requireAdmin } from "@/lib/admin-auth";
 import { isBoldConfigured } from "@/lib/bold";
@@ -30,6 +31,7 @@ type OrderRow = {
   payment_status: string | null;
   paid_at: string | null;
   notes: string | null;
+  scheduled_for: string | null;
 };
 
 export default async function AdminDashboardPage({
@@ -59,7 +61,7 @@ export default async function AdminDashboardPage({
     supabase
       .from("orders")
       .select(
-        "id, customer_name, customer_phone, total, status, created_at, fulfillment, delivery_zone, delivery_fee, payment_method, payment_status, paid_at, notes",
+        "id, customer_name, customer_phone, total, status, created_at, fulfillment, delivery_zone, delivery_fee, payment_method, payment_status, paid_at, notes, scheduled_for",
       )
       .order("created_at", { ascending: false })
       .limit(20),
@@ -326,6 +328,11 @@ export default async function AdminDashboardPage({
                         <div className="font-medium">
                           {fulfillmentLabels[order.fulfillment ?? ""] ?? "-"}
                         </div>
+                        {order.scheduled_for && (
+                          <div className="mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-800">
+                            {t("scheduled_badge", { day: openingDayLabel(order.scheduled_for, locale === "en" ? "en" : "es") })}
+                          </div>
+                        )}
                         {order.fulfillment === "delivery" && (
                           <div className="text-gray-400">
                             {order.delivery_zone ?? ""}

@@ -4,6 +4,7 @@
 import { AMOUNT_MISMATCH_NOTE, DOUBLE_CHARGE_NOTE } from "./payments.confirm.ts";
 import type { Fulfillment } from "@/lib/delivery-zones";
 import type { PaymentStatus } from "@/lib/types";
+import { scheduledLabelEs } from "./store-hours.ts";
 
 export const WHATSAPP_NUMBER = "573027190084";
 // Same as SITE_URL in @/lib/seo (not imported: node:test cannot resolve the alias).
@@ -31,6 +32,8 @@ export interface WhatsAppOrder {
   payment_review?: boolean;
   /** Sent after paying with the shop's QR: the customer attaches the receipt. */
   qr_receipt?: boolean;
+  /** Placed while the shop was closed: prepared at this opening (ISO). */
+  scheduled_for?: string | null;
   order_items: WhatsAppOrderItem[];
 }
 
@@ -84,6 +87,7 @@ export function buildWhatsAppMessage(order: WhatsAppOrder): string {
     `🍪 *Nuevo pedido Crooki*`,
     ``,
     `*Pedido #${orderId}*`,
+    order.scheduled_for ? `🕚 *PROGRAMADO:* ${scheduledLabelEs(order.scheduled_for)}` : null,
     // Stays in the customer's chat: their way back to the order's status.
     `Estado del pedido: ${ORDER_PAGE_BASE}${order.id}`,
     ``,

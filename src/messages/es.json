@@ -130,7 +130,12 @@
     "email_invalid": "Revisa tu correo electrónico",
     "payment_opening": "Abriendo el pago…",
     "view_order": "Ver mi pedido",
-    "order_whatsapp": "Pedir por WhatsApp"
+    "order_whatsapp": "Pedir por WhatsApp",
+    "closed_title": "El local está cerrado",
+    "closed_body": "Atendemos todos los días de 11 a. m. a 9 p. m. Puedes hacer tu pedido ahora: lo prepararemos el {day}, desde las 11 a. m.",
+    "closed_accept": "Entiendo que mi pedido se preparará en el próximo horario de apertura",
+    "closed_required": "Confirma que tu pedido se preparará cuando abramos",
+    "closed_now": "El local acaba de cerrar. Revisa el aviso y confirma para programar tu pedido."
   },
   "confirmation": {
     "title": "¡Pedido recibido!",
@@ -180,7 +185,9 @@
     "qr_step_receipt": "Toma una captura del comprobante y envíanosla por WhatsApp. Empezamos a preparar tu pedido apenas lo confirmemos.",
     "qr_send_receipt": "Ya pagué: enviar comprobante",
     "auto_refresh": "Actualizando automáticamente…",
-    "lookup_hint": "Guarda tu número de pedido: con él y tu teléfono puedes ver el estado en «Mi pedido»."
+    "lookup_hint": "Guarda tu número de pedido: con él y tu teléfono puedes ver el estado en «Mi pedido».",
+    "scheduled": "Programado",
+    "scheduled_value": "{day}, desde las 11 a. m."
   },
   "admin": {
     "dashboard": "Panel de administración",
@@ -221,7 +228,8 @@
     "upload_images": "Subir imágenes",
     "drag_drop": "Arrastra imágenes aquí o haz clic para seleccionar",
     "no_products": "No hay productos aún",
-    "no_orders": "No hay pedidos aún"
+    "no_orders": "No hay pedidos aún",
+    "scheduled_badge": "Programado · {day}"
   },
   "contact": {
     "whatsapp": "Chatea con nosotros por WhatsApp",
@@ -289,5 +297,10 @@
     "help": "¿No tienes el número de pedido?",
     "whatsapp": "Pregúntanos por WhatsApp",
     "whatsapp_text": "¡Hola Crooki! Quiero saber el estado de mi pedido."
+  },
+  "hours": {
+    "closed_today": "Estamos cerrados. Abrimos hoy a las 11 a. m.",
+    "closed_tomorrow": "Estamos cerrados por hoy. Abrimos mañana a las 11 a. m.",
+    "closed_cta": "Puedes dejar tu pedido programado"
   }
 }

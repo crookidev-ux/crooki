@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useCartStore } from "@/store/cart";
 import { useRouter, Link } from "@/i18n/navigation";
 import { toast } from "sonner";
-import { ShoppingBag, ArrowLeft, Loader2, CreditCard, QrCode, Info, MessageCircle } from "lucide-react";
+import { ShoppingBag, ArrowLeft, Loader2, CreditCard, QrCode, Info, MessageCircle, Clock } from "lucide-react";
 import {
   allowedFulfillments,
   getZone,
@@ -20,6 +20,8 @@ import type { CartItem } from "@/lib/types";
 import FulfillmentPicker from "./FulfillmentPicker";
 import ZoneCombobox from "./ZoneCombobox";
 import { useBoldCheckout } from "./useBoldCheckout";
+import { useStoreHours } from "./useStoreHours";
+import { openingDayLabel } from "@/lib/store-hours";
 
 // Mirrors BOLD_MIN_AMOUNT in src/lib/bold.ts, which can't be imported here
 // (it pulls in node:crypto). The server enforces the real limit.
@@ -41,7 +43,7 @@ type FieldKey = keyof FormData | "zone";
 type Errors = Partial<Record<FieldKey, string>>;
 
 type CheckoutOk = { orderId: string; total: number; whatsappUrl?: string; bold?: BoldClientConfig };
-type CheckoutErr = { error?: string; unavailable?: string[]; orderId?: string };
+type CheckoutErr = { error?: string; unavailable?: string[]; orderId?: string; closed?: boolean; opensAt?: string };
 
 type PreparedPayment = { key: string; orderId: string; total: number; bold: BoldClientConfig };
 
@@ -171,6 +173,14 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
   // Set once an order exists and the cart was emptied, so the page shows a
   // "go to your order" panel instead of the empty-cart screen.
   const [startedOrderId, setStartedOrderId] = useState<string | null>(null);
+  // Shop closed (9 p.m. – 11 a.m.): the order is for the next opening and the
+  // customer must confirm it. The server's answer wins over this device's clock.
+  const hours = useStoreHours();
+  const [serverOpensAt, setServerOpensAt] = useState<string | null>(null);
+  const opensAt = hours && !hours.open ? hours.opensAt : serverOpensAt;
+  const isClosed = opensAt !== null;
+  const [scheduleAccepted, setScheduleAccepted] = useState(false);
+  const [scheduleError, setScheduleError] = useState(false);
 
   const set = (key: keyof FormData) => (value: string) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -178,7 +188,8 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
   const merchSlugs = useMemo(() => new Set(merchCategorySlugs), [merchCategorySlugs]);
   const hasMerch = items.some((i) => merchSlugs.has(i.product.category));
   const hasFood = items.some((i) => !merchSlugs.has(i.product.category));
-  const options = allowedFulfillments({ hasMerch });
+  // «Comer en el local» makes no sense while the shop is closed.
+  const options = allowedFulfillments({ hasMerch }).filter((f) => !(isClosed && f === "dine_in"));
   const fulfillment = options.includes(fulfillmentChoice) ? fulfillmentChoice : options[0];
   const isDelivery = fulfillment === "delivery";
   const zoneId = isDelivery && zoneChoice && zoneAllowed(zoneChoice, { hasFood }) ? zoneChoice : null;
@@ -197,6 +208,7 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
       notes: form.notes.trim(),
       paymentMethod,
       acceptedPolicy: true,
+      ...(isClosed && scheduleAccepted ? { scheduleAccepted: true as const } : {}),
       items: items.map(toItemInput),
     };
     if (isDelivery && zoneId) {
@@ -238,7 +250,9 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
     }
     setErrors(e);
     setPolicyError(!acceptedPolicy);
-    const ok = Object.keys(e).length === 0 && acceptedPolicy;
+    const scheduleOk = !isClosed || scheduleAccepted;
+    setScheduleError(!scheduleOk);
+    const ok = Object.keys(e).length === 0 && acceptedPolicy && scheduleOk;
     if (!ok) {
       // Move focus to the first problem so it is seen and announced.
       requestAnimationFrame(() => {
@@ -272,6 +286,14 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
       setStartedOrderId(data.orderId);
       toast.error(t("error_generic"));
       router.push(`/pedido/${data.orderId}`);
+      return;
+    }
+    if (status === 409 && data.closed && data.opensAt) {
+      // The shop closed while the form was open: show the notice and ask again.
+      setServerOpensAt(data.opensAt);
+      setScheduleAccepted(false);
+      setScheduleError(true);
+      toast.warning(t("closed_now"));
       return;
     }
     if (status === 409 && data.unavailable?.length) {
@@ -459,6 +481,42 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
             noValidate
             className="lg:col-span-3 flex flex-col gap-5"
           >
+            {isClosed && opensAt && (
+              <section
+                aria-labelledby="checkout-closed-title"
+                className="rounded-2xl border-2 border-[#f3c78b] bg-[#fdf8f0] p-5 sm:p-6 flex flex-col gap-3"
+              >
+                <h2 id="checkout-closed-title" className="flex items-center gap-2 text-lg font-semibold" style={{ color: BRAND }}>
+                  <Clock aria-hidden="true" className="w-5 h-5 shrink-0" />
+                  {t("closed_title")}
+                </h2>
+                <p className="text-sm text-gray-700">
+                  {t("closed_body", { day: openingDayLabel(opensAt, locale === "en" ? "en" : "es") })}
+                </p>
+                <div>
+                  <label className="flex items-start gap-3 text-sm font-semibold text-gray-800 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={scheduleAccepted}
+                      onChange={(e) => {
+                        setScheduleAccepted(e.target.checked);
+                        if (e.target.checked) setScheduleError(false);
+                      }}
+                      aria-invalid={scheduleError ? true : undefined}
+                      aria-describedby={scheduleError ? "checkout-schedule-error" : undefined}
+                      className="mt-0.5 w-5 h-5 sm:w-4 sm:h-4 shrink-0 accent-[#8b0031]"
+                    />
+                    <span>{t("closed_accept")} *</span>
+                  </label>
+                  {scheduleError && (
+                    <p id="checkout-schedule-error" role="alert" className="text-red-500 text-xs mt-1">
+                      {t("closed_required")}
+                    </p>
+                  )}
+                </div>
+              </section>
+            )}
+
             <Section>
               <FulfillmentPicker
                 value={fulfillment}

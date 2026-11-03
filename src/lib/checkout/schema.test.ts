@@ -38,3 +38,12 @@ test("parseCheckoutInput keeps ordinary notes and allows none", () => {
   const empty = parseCheckoutInput(body(undefined));
   assert.equal(empty.ok && empty.value.notes, "");
 });
+
+test("scheduleAccepted is kept only when it is exactly true", () => {
+  const yes = parseCheckoutInput({ ...body(""), scheduleAccepted: true });
+  assert.equal(yes.ok && yes.value.scheduleAccepted, true);
+  for (const v of [undefined, false, "true", 1]) {
+    const r = parseCheckoutInput({ ...body(""), scheduleAccepted: v });
+    assert.equal(r.ok && r.value.scheduleAccepted, undefined);
+  }
+});

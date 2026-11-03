@@ -22,6 +22,8 @@ export type CheckoutInput = {
   notes: string;
   paymentMethod: "bold" | "qr";
   acceptedPolicy: true;
+  /** The customer saw that the shop is closed and the order is for the next opening. */
+  scheduleAccepted?: true;
   items: CheckoutItemInput[];
 };
 
@@ -187,6 +189,7 @@ function parse(body: unknown): CheckoutInput {
     items: rawItems.map(parseItem),
   };
   if (delivery) value.delivery = delivery;
+  if (r.scheduleAccepted === true) value.scheduleAccepted = true;
   return value;
 }
 

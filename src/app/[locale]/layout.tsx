@@ -7,6 +7,7 @@ import { SITE_URL, localizedUrl } from "@/lib/seo";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import WhatsAppButton from "@/components/layout/WhatsAppButton";
+import ClosedNotice from "@/components/layout/ClosedNotice";
 import { Toaster } from "@/components/ui/sonner";
 import CartDrawer from "@/components/order/CartDrawer";
 import CartHydrator from "@/components/order/CartHydrator";
@@ -84,6 +85,7 @@ export default async function LocaleLayout({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
       <Header locale={locale} />
+      <ClosedNotice />
       <main className="flex-1">{children}</main>
       <Footer />
       <CartHydrator />

@@ -27,6 +27,8 @@ export type OrderPayload = {
   recipient_phone: string | null;
   payment_method: "bold" | "qr";
   payment_status: "unpaid";
+  /** Next opening (ISO) when the order was placed with the shop closed. */
+  scheduled_for: string | null;
 };
 
 /** Delivery address as stored: "" when not delivered, "{city} · {address}" outside the city. */
@@ -37,7 +39,11 @@ export function orderAddress(input: CheckoutInput): string {
   return address;
 }
 
-export function buildOrderPayload(input: CheckoutInput, priced: PricedCart): OrderPayload {
+export function buildOrderPayload(
+  input: CheckoutInput,
+  priced: PricedCart,
+  scheduledFor: string | null = null,
+): OrderPayload {
   const isDelivery = input.fulfillment === "delivery";
   return {
     customer_name: input.customer.name,
@@ -53,6 +59,7 @@ export function buildOrderPayload(input: CheckoutInput, priced: PricedCart): Ord
     payment_method: input.paymentMethod,
     // Always created unpaid; createAttempt moves Bold orders to awaiting_payment.
     payment_status: "unpaid",
+    scheduled_for: scheduledFor,
   };
 }
 
@@ -82,6 +89,7 @@ export function buildWhatsAppOrder(
     delivery_zone: payload.delivery_zone,
     delivery_fee: payload.delivery_fee,
     payment_status: payload.payment_status,
+    scheduled_for: payload.scheduled_for,
     order_items: lines.map((l) => ({
       product_name: l.product_name,
       quantity: l.quantity,

@@ -35,7 +35,14 @@ test("pickup order: empty address, no zone, no recipient phone, unpaid", () => {
     recipient_phone: null,
     payment_method: "bold",
     payment_status: "unpaid",
+    scheduled_for: null,
   });
+});
+
+test("an order placed while closed carries its scheduled opening", () => {
+  const p = buildOrderPayload(base, { lines, deliveryFee: 0, total: 10000 }, "2026-11-03T16:00:00.000Z");
+  assert.equal(p.scheduled_for, "2026-11-03T16:00:00.000Z");
+  assert.equal(buildWhatsAppOrder("id-1", p, lines).scheduled_for, "2026-11-03T16:00:00.000Z");
 });
 
 test("delivery order carries zone name, fee and recipient phone", () => {

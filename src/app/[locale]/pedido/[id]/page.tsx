@@ -22,6 +22,7 @@ import { hasSystemNote } from "@/lib/payments.confirm";
 import { retryBlockReason } from "@/lib/payments.config";
 import { isBoldConfigured } from "@/lib/bold";
 import { deliveryFeeSettled } from "@/lib/delivery-zones";
+import { openingDayLabel } from "@/lib/store-hours";
 import type { Order, OrderItem, PaymentAttempt } from "@/lib/types";
 import OrderPaymentActions from "@/components/order/OrderPaymentActions";
 import AutoRefresh from "@/components/order/AutoRefresh";
@@ -335,6 +336,14 @@ export default async function OrderConfirmationPage({
                 {isDelivery && order.delivery_zone ? ` · ${order.delivery_zone}` : ""}
               </dd>
             </div>
+            {order.scheduled_for && (
+              <div>
+                <dt className="inline font-semibold">{t("scheduled")}:</dt>{" "}
+                <dd className="inline">
+                  {t("scheduled_value", { day: openingDayLabel(order.scheduled_for, locale === "en" ? "en" : "es") })}
+                </dd>
+              </div>
+            )}
             {isDelivery && order.customer_address && (
               <div>
                 <dt className="inline font-semibold">{t("address")}:</dt>{" "}
