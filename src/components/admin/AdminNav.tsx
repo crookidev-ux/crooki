@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
-import { LogOut, Package, ShoppingBag, Sparkles, Tag } from "lucide-react";
+import { Clapperboard, LogOut, Package, ShoppingBag, Sparkles, Tag } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 
 interface Props {
@@ -25,6 +25,7 @@ export default function AdminNav({ locale, user }: Props) {
     { href: `/${locale}/admin`, icon: Package, label: t("products") },
     { href: `/${locale}/admin/categorias`, icon: Tag, label: "Categorías" },
     { href: `/${locale}/admin/temporadas`, icon: Sparkles, label: "Temporadas" },
+    { href: `/${locale}/admin/redes`, icon: Clapperboard, label: "Redes" },
     { href: `/${locale}/admin#orders`, icon: ShoppingBag, label: t("orders") },
   ];
 

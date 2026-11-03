@@ -302,5 +302,11 @@
     "closed_today": "Estamos cerrados. Abrimos hoy a las 11 a. m.",
     "closed_tomorrow": "Estamos cerrados por hoy. Abrimos mañana a las 11 a. m.",
     "closed_cta": "Puedes dejar tu pedido programado"
+  },
+  "social": {
+    "title": "Síguenos en redes",
+    "subtitle": "Lo que está pasando hoy en el Bake Bar. Toca un video para verlo con sonido.",
+    "open": "Abrir el video en {network}",
+    "view_on": "Ver en {network}"
   }
 }

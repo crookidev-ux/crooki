@@ -302,5 +302,11 @@
     "closed_today": "We're closed. We open today at 11 a.m.",
     "closed_tomorrow": "We're closed for today. We open tomorrow at 11 a.m.",
     "closed_cta": "You can still schedule your order"
+  },
+  "social": {
+    "title": "Follow us",
+    "subtitle": "What's happening at the Bake Bar today. Tap a video to watch it with sound.",
+    "open": "Open the video on {network}",
+    "view_on": "View on {network}"
   }
 }

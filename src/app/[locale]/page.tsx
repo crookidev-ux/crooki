@@ -4,10 +4,12 @@ import { alternatesFor } from "@/lib/seo";
 import Hero from "@/components/home/Hero";
 import FeaturedProducts from "@/components/home/FeaturedProducts";
 import AboutSection from "@/components/home/AboutSection";
+import SocialSection from "@/components/home/SocialSection";
 import type { Product } from "@/lib/types";
 import { mockProducts } from "@/lib/mock-products";
 import { parseActiveSeason, type SeasonId } from "@/lib/seasons";
 import { getActiveSeason } from "@/lib/seasons.data";
+import { getLatestSocialPosts } from "@/lib/social.data";
 
 async function getProducts(): Promise<Product[]> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("your_")) {
@@ -65,7 +67,11 @@ export default async function HomePage({
 }) {
   const { locale } = await params;
   const { temporada } = await searchParams;
-  const [products, activeSeason] = await Promise.all([getProducts(), getActiveSeason()]);
+  const [products, activeSeason, socialPosts] = await Promise.all([
+    getProducts(),
+    getActiveSeason(),
+    getLatestSocialPosts(),
+  ]);
   const preview = previewSeason(temporada);
   const season = preview === undefined ? activeSeason : preview;
 
@@ -74,6 +80,7 @@ export default async function HomePage({
       <Hero locale={locale} season={season} />
       <FeaturedProducts products={products} locale={locale} />
       <AboutSection locale={locale} />
+      <SocialSection locale={locale} posts={socialPosts} />
     </>
   );
 }
