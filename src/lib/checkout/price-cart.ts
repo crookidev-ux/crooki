@@ -6,9 +6,10 @@ import {
   allowedFulfillments,
   getZone,
   onlinePaymentAllowed,
+  strictestRule,
   zoneAllowed,
 } from "../delivery-zones.ts";
-import type { DeliveryZone } from "@/lib/delivery-zones";
+import type { DeliveryRule, DeliveryZone } from "@/lib/delivery-zones";
 import type { CheckoutInput, CheckoutItemInput } from "@/lib/checkout/schema";
 
 export type CatalogProduct = {
@@ -22,6 +23,8 @@ export type CatalogProduct = {
   category: string;
   /** false when the product's category is hidden (visible=false); gates top-level lines only. */
   categoryVisible: boolean;
+  /** From the product's category; the cart follows the strictest one. */
+  deliveryRule: DeliveryRule;
   includes_salsa?: boolean;
   box_cookie_count?: number;
   gift_card_price?: number | null;
@@ -56,7 +59,7 @@ export type PriceCartResult =
       zone?: DeliveryZone;
       hasMerch: boolean;
     }
-  | { ok: false; status: 400 | 409; error: string; unavailable?: string[] };
+  | { ok: false; status: 400 | 409; error: string; unavailable?: string[]; deliveryRestricted?: boolean };
 
 const key = (parentId: string, childId: string) => `${parentId}:${childId}`;
 
@@ -225,8 +228,10 @@ export function priceCart(input: CheckoutInput, catalog: Catalog): PriceCartResu
   const lines: PricedLine[] = [];
   let hasMerch = false;
   let hasFood = false;
+  const rules: DeliveryRule[] = [];
   for (const item of input.items) {
     const product = catalog.products.get(item.productId)!;
+    rules.push(product.deliveryRule);
     if (product.isMerch) hasMerch = true;
     else hasFood = true;
     const r = priceLine(item, product, catalog, input.locale);
@@ -239,15 +244,29 @@ export function priceCart(input: CheckoutInput, catalog: Catalog): PriceCartResu
   }
 
   // 3. Fulfillment and zone rules.
-  if (!allowedFulfillments({ hasMerch }).includes(input.fulfillment)) {
-    return { ok: false, status: 400, error: "Merch can only be delivered" };
+  const deliveryRule = strictestRule(rules);
+  if (!allowedFulfillments({ hasMerch, deliveryRule }).includes(input.fulfillment)) {
+    const restricted = input.fulfillment === "delivery" || deliveryRule === "none";
+    const error =
+      input.fulfillment === "delivery"
+        ? "Some products in this order cannot be delivered"
+        : "Merch can only be delivered";
+    return { ok: false, status: 400, error, ...(restricted ? { deliveryRestricted: true } : {}) };
   }
   let zone: DeliveryZone | undefined;
   if (input.fulfillment === "delivery") {
     if (!input.delivery) return { ok: false, status: 400, error: "delivery is required" };
     zone = getZone(input.delivery.zoneId);
     if (!zone) return { ok: false, status: 400, error: "Unknown delivery zone" };
-    if (!zoneAllowed(zone.id, { hasFood })) {
+    if (!zoneAllowed(zone.id, { hasFood, deliveryRule })) {
+      if (deliveryRule === "nearby") {
+        return {
+          ok: false,
+          status: 400,
+          error: "This zone is out of range for some products in this order",
+          deliveryRestricted: true,
+        };
+      }
       return { ok: false, status: 400, error: "Food cannot be shipped outside the city" };
     }
   }

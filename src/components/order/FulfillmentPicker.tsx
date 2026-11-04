@@ -29,14 +29,17 @@ interface Props {
   value: Fulfillment;
   onChange: (value: Fulfillment) => void;
   options: Fulfillment[];
+  /** Shown greyed out, so the customer sees the option exists but is off. */
+  disabledOptions?: Fulfillment[];
   /** Extra hint under the title (e.g. why only delivery is offered). */
   note?: string;
 }
 
-export default function FulfillmentPicker({ value, onChange, options, note }: Props) {
+export default function FulfillmentPicker({ value, onChange, options, disabledOptions = [], note }: Props) {
   const t = useTranslations("checkout");
   const name = useId();
   const noteId = `${name}-note`;
+  const shown = [...disabledOptions, ...options];
 
   return (
     <fieldset aria-describedby={note ? noteId : undefined}>
@@ -48,24 +51,32 @@ export default function FulfillmentPicker({ value, onChange, options, note }: Pr
           {note}
         </p>
       )}
-      <div className={`grid gap-3 ${note ? "" : "mt-3"} ${GRID_COLS[options.length] ?? "grid-cols-3"}`}>
-        {options.map((option) => {
+      <div className={`grid gap-3 ${note ? "" : "mt-3"} ${GRID_COLS[shown.length] ?? "grid-cols-3"}`}>
+        {shown.map((option) => {
           const Icon = ICONS[option];
-          const checked = value === option;
+          const off = disabledOptions.includes(option);
+          const checked = !off && value === option;
           return (
             <label
               key={option}
-              className={`relative flex cursor-pointer rounded-2xl border-2 px-2 py-4 text-center transition-colors has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-[#8b0031] has-[input:focus-visible]:ring-offset-2 ${
-                options.length === 1
+              className={`relative flex rounded-2xl border-2 px-2 py-4 text-center transition-colors has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-[#8b0031] has-[input:focus-visible]:ring-offset-2 ${
+                shown.length === 1
                   ? "flex-row items-center justify-center gap-3"
                   : "flex-col items-center gap-2"
-              } ${checked ? "border-[#8b0031] bg-[#fdf8f0]" : "border-gray-200 bg-white hover:border-gray-300"}`}
+              } ${
+                off
+                  ? "cursor-not-allowed border-gray-100 bg-gray-50"
+                  : checked
+                    ? "cursor-pointer border-[#8b0031] bg-[#fdf8f0]"
+                    : "cursor-pointer border-gray-200 bg-white hover:border-gray-300"
+              }`}
             >
               <input
                 type="radio"
                 name={name}
                 value={option}
                 checked={checked}
+                disabled={off}
                 onChange={() => onChange(option)}
                 className="sr-only"
               />
@@ -75,11 +86,12 @@ export default function FulfillmentPicker({ value, onChange, options, note }: Pr
                 style={{ color: checked ? "#8b0031" : "#9ca3af" }}
               />
               <span
-                className={`text-sm leading-tight ${checked ? "font-bold" : "font-medium text-gray-700"}`}
+                className={`text-sm leading-tight ${checked ? "font-bold" : off ? "font-medium text-gray-500" : "font-medium text-gray-700"}`}
                 style={checked ? { color: "#8b0031" } : undefined}
               >
                 {t(LABEL_KEYS[option])}
               </span>
+              {off && <span className="text-xs leading-tight text-gray-500">{t("fulfillment_unavailable")}</span>}
             </label>
           );
         })}

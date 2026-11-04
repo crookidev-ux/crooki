@@ -33,7 +33,7 @@ def main() -> None:
     ws = wb[SHEET]
     raw = []
     for row in list(ws.iter_rows(values_only=True))[1:]:
-        _loc, ucg, barrio, _dist, _how, tarifa, _origin = (list(row) + [None] * 7)[:7]
+        _loc, ucg, barrio, dist, _how, tarifa, _origin = (list(row) + [None] * 7)[:7]
         if barrio is None or not str(barrio).strip():
             continue
         name = str(barrio).strip()
@@ -45,7 +45,8 @@ def main() -> None:
         if isinstance(tarifa, str):
             tarifa = int(tarifa) if tarifa.strip().isdigit() else None
         fee = int(tarifa) if tarifa is not None else None
-        raw.append({"name": name, "sector": sector, "suffix": suffix, "fee": fee})
+        km = dist if isinstance(dist, (int, float)) else None
+        raw.append({"name": name, "sector": sector, "suffix": suffix, "fee": fee, "km": km})
 
     counts = Counter(r["name"] for r in raw)
     zones, used = [], set()
@@ -59,7 +60,7 @@ def main() -> None:
             n += 1
         used.add(zid)
         name = f"{r['name']} ({r['sector']})" if dup else r["name"]
-        zones.append({"id": zid, "name": name, "sector": r["sector"], "fee": r["fee"]})
+        zones.append({"id": zid, "name": name, "sector": r["sector"], "fee": r["fee"], "km": r["km"]})
     zones.sort(key=lambda z: (sort_key(z["name"]), z["id"]))
 
     lines = [

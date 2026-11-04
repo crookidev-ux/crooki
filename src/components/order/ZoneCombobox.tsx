@@ -20,11 +20,15 @@ interface Props {
   value: string | null;
   onChange: (zoneId: string | null) => void;
   allowOutsideCity: boolean;
+  /** Barrios listed but not selectable, so the customer learns why instead of seeing no match. */
+  isBlocked?: (zone: DeliveryZone) => boolean;
+  /** Why a blocked barrio can't be chosen and what to do instead. */
+  blockedHint?: string;
   /** Error message to show (and announce) under the field. */
   error?: string;
 }
 
-export default function ZoneCombobox({ value, onChange, allowOutsideCity, error }: Props) {
+export default function ZoneCombobox({ value, onChange, allowOutsideCity, isBlocked, blockedHint, error }: Props) {
   const t = useTranslations("checkout");
   const baseId = useId();
   const inputId = `${baseId}-input`;
@@ -50,11 +54,14 @@ export default function ZoneCombobox({ value, onChange, allowOutsideCity, error 
   // With no text typed there is nothing to match, except the outside option.
   const showList = open && (query.trim().length > 0 || allowOutsideCity);
   const activeOption = showList && active >= 0 ? results[active] : undefined;
+  // Explains the «Fuera de alcance» rows while any is on screen.
+  const showBlockedHint = showList && Boolean(blockedHint) && results.some((z) => isBlocked?.(z));
 
   const fee = (z: DeliveryZone) =>
     z.fee != null ? `$${z.fee.toLocaleString("es-CO")}` : t("zone_fee_tbd");
 
   const choose = (z: DeliveryZone) => {
+    if (isBlocked?.(z)) return;
     setQuery(zoneName(z));
     setOpen(false);
     setActive(-1);
@@ -152,22 +159,26 @@ export default function ZoneCombobox({ value, onChange, allowOutsideCity, error 
         {results.map((z, i) => {
           const isActive = i === active;
           const isSelected = z.id === value;
+          const blocked = isBlocked?.(z) ?? false;
           return (
             <li
               key={z.id}
               id={`${listId}-${z.id}`}
               role="option"
               aria-selected={isSelected}
+              aria-disabled={blocked ? true : undefined}
               // Keep focus in the input so the click is not lost to blur.
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => choose(z)}
               onMouseEnter={() => setActive(i)}
-              className={`flex cursor-pointer items-center justify-between gap-3 px-4 py-2.5 text-sm ${
+              className={`flex items-center justify-between gap-3 px-4 py-2.5 text-sm ${
+                blocked ? "cursor-not-allowed" : "cursor-pointer"
+              } ${
                 isActive ? "bg-[#fdf8f0]" : ""
               } ${z.id === OUTSIDE_CITY_ZONE_ID && i > 0 ? "border-t border-gray-100" : ""}`}
             >
               <span className="min-w-0">
-                <span className={`block leading-snug ${isSelected ? "font-bold" : "font-medium"} text-gray-800`}>
+                <span className={`block leading-snug ${isSelected ? "font-bold" : "font-medium"} ${blocked ? "text-gray-500" : "text-gray-800"}`}>
                   {zoneName(z)}
                 </span>
                 {z.id !== OUTSIDE_CITY_ZONE_ID && (
@@ -175,9 +186,9 @@ export default function ZoneCombobox({ value, onChange, allowOutsideCity, error 
                 )}
               </span>
               <span
-                className={`shrink-0 text-xs ${z.fee != null ? "font-semibold text-gray-700" : "text-gray-500 italic"}`}
+                className={`shrink-0 text-xs ${z.fee != null && !blocked ? "font-semibold text-gray-700" : "text-gray-500 italic"}`}
               >
-                {fee(z)}
+                {blocked ? t("zone_out_of_range") : fee(z)}
               </span>
             </li>
           );
@@ -185,7 +196,7 @@ export default function ZoneCombobox({ value, onChange, allowOutsideCity, error 
       </ul>
 
       <p className="sr-only" aria-live="polite">
-        {showList && results.length === 0 ? t("zone_no_results") : ""}
+        {showList && results.length === 0 ? t("zone_no_results") : showBlockedHint ? blockedHint : ""}
       </p>
       {showList && results.length === 0 && (
         <div
@@ -193,6 +204,15 @@ export default function ZoneCombobox({ value, onChange, allowOutsideCity, error 
           className="absolute z-20 mt-1 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-500 shadow-lg"
         >
           {t("zone_no_results")}
+        </div>
+      )}
+
+      {showBlockedHint && (
+        <div
+          aria-hidden="true"
+          className="absolute bottom-full z-20 mb-1 w-full rounded-xl border border-[#f3c78b] bg-[#fdf8f0] px-4 py-3 text-sm text-gray-700 shadow-lg"
+        >
+          {blockedHint}
         </div>
       )}
 

@@ -12,6 +12,7 @@ function product(p: Partial<CatalogProduct> & { id: string }): CatalogProduct {
     isMerch: false,
     category: "galletas",
     categoryVisible: true,
+    deliveryRule: "any",
     ...p,
   };
 }
@@ -546,4 +547,57 @@ test("R11: hidden category -> 409 for top-level, but hidden components still usa
     catalog,
   );
   assert.equal(ok.ok, true);
+});
+
+function ruleCatalog(): Catalog {
+  const catalog = makeCatalog();
+  const add = (p: Partial<CatalogProduct> & { id: string }) => catalog.products.set(p.id, product(p));
+  add({ id: "malteada", category: "malteadas", deliveryRule: "nearby" });
+  add({ id: "latte", category: "bebidas-calientes", deliveryRule: "none" });
+  return catalog;
+}
+
+const zoneIn = (zoneId: string) => ({ zoneId, address: "Cra 1 #2-3", recipientPhone: "3001234567" });
+
+test("delivery rule: malteada reaches a zone within 6 km, even with cookies", () => {
+  const items = [{ productId: "malteada", quantity: 1 }, { productId: "galleta", quantity: 1 }];
+  const r = priceCart(input({ items, delivery: zoneIn("bocagrande") }), ruleCatalog());
+  assert.equal(r.ok, true);
+});
+
+test("delivery rule: the whole order is limited by its malteada", () => {
+  const items = [{ productId: "malteada", quantity: 1 }, { productId: "galleta", quantity: 1 }];
+  const r = priceCart(input({ items, delivery: zoneIn("los-ejecutivos") }), ruleCatalog());
+  assert.equal(r.ok, false);
+  if (!r.ok) {
+    assert.equal(r.status, 400);
+    assert.equal(r.deliveryRestricted, true);
+  }
+});
+
+test("delivery rule: cookies alone still reach far zones", () => {
+  const r = priceCart(input({ delivery: zoneIn("los-ejecutivos") }), ruleCatalog());
+  assert.equal(r.ok, true);
+});
+
+test("delivery rule: a drink blocks delivery but not pick-up or dine-in", () => {
+  const items = [{ productId: "latte", quantity: 1 }, { productId: "galleta", quantity: 1 }];
+  const delivered = priceCart(input({ items, delivery: zoneIn("bocagrande") }), ruleCatalog());
+  assert.equal(delivered.ok, false);
+  if (!delivered.ok) assert.equal(delivered.status, 400);
+  for (const fulfillment of ["pickup", "dine_in"] as const) {
+    const r = priceCart(input({ items, fulfillment, delivery: undefined }), ruleCatalog());
+    assert.equal(r.ok, true);
+  }
+});
+
+test("delivery rule: merch plus a drink has no valid fulfillment", () => {
+  const items = [{ productId: "camiseta", quantity: 1 }, { productId: "latte", quantity: 1 }];
+  for (const over of [
+    { fulfillment: "delivery" as const, delivery: zoneIn("bocagrande") },
+    { fulfillment: "pickup" as const, delivery: undefined },
+  ]) {
+    const r = priceCart(input({ items, ...over }), ruleCatalog());
+    assert.equal(r.ok, false);
+  }
 });

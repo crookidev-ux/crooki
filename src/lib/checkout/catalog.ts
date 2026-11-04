@@ -3,6 +3,7 @@
 // browser's. Import only from Route Handlers / Server Components.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServiceClient } from "@/lib/supabase/service";
+import { parseDeliveryRule, type DeliveryRule } from "@/lib/delivery-zones";
 import type { Catalog, CatalogProduct } from "./price-cart";
 
 type ProductRow = {
@@ -102,9 +103,11 @@ export async function loadCatalog(
   const slugs = [...new Set(rows.map((r) => r.category))];
   const merchSlugs = new Set<string>();
   const visibleSlugs = new Set<string>();
+  const deliveryRules = new Map<string, DeliveryRule>();
   if (slugs.length > 0) {
-    const catRes = await supabase.from("categories").select("slug, kind, visible").in("slug", slugs);
-    for (const c of unwrap<{ slug: string; kind: string; visible?: boolean | null }>(catRes, "categories")) {
+    const catRes = await supabase.from("categories").select("slug, kind, visible, delivery_rule").in("slug", slugs);
+    for (const c of unwrap<{ slug: string; kind: string; visible?: boolean | null; delivery_rule?: string | null }>(catRes, "categories")) {
+      deliveryRules.set(c.slug, parseDeliveryRule(c.delivery_rule));
       if (c.kind === "merch") merchSlugs.add(c.slug);
       if (c.visible !== false) visibleSlugs.add(c.slug);
     }
@@ -130,6 +133,7 @@ export async function loadCatalog(
       isMerch: merchSlugs.has(r.category),
       category: r.category,
       categoryVisible: visibleSlugs.has(r.category),
+      deliveryRule: deliveryRules.get(r.category) ?? "none",
     };
     if (r.includes_salsa != null) p.includes_salsa = r.includes_salsa;
     if (r.box_cookie_count != null) p.box_cookie_count = r.box_cookie_count;

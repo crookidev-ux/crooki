@@ -45,7 +45,9 @@
     "add_to_cart": "Add",
     "sold_out": "Sold out",
     "price_unit": "each",
-    "coming_soon": "Coming soon"
+    "coming_soon": "Coming soon",
+    "delivery_nearby": "Delivery within {km} km",
+    "delivery_none": "Pick-up or eat at the shop only"
   },
   "categories": {
     "galletas": "Cookies",
@@ -122,6 +124,14 @@
     "pay_qr": "Pay with QR",
     "pay_qr_only_note": "For this destination we confirm the delivery fee over WhatsApp",
     "merch_delivery_only": "Merchandise is delivered to your door",
+    "delivery_rejected": "An item in your order can no longer be delivered there. Reload the page to see your delivery options.",
+    "fulfillment_unavailable": "Not available",
+    "zone_out_of_range_hint": "Your order has {names}, which we only deliver within {km} km so it doesn’t melt. If you’re farther away, remove it from the order or choose pick-up at the shop.",
+    "delivery_none_note": "To keep them at their best, drinks aren’t delivered: {names}. You can pick up your order at the shop.",
+    "delivery_none_remove": "I’d rather get delivery: remove {names}",
+    "delivery_conflict": "We can’t fulfill this order together: merchandise is delivery only, and to keep them at their best we don’t deliver these drinks: {names}. Remove them from this order and place a separate one to pick up or have at the shop.",
+    "delivery_nearby_note": "So it doesn’t melt on the way, {names} is only delivered within {km} km of the shop. If you’re farther away, you can pick up your order at the shop.",
+    "zone_out_of_range": "Too far for your order",
     "price_changed": "We updated the prices in your order. Check the total before paying.",
     "unavailable": "Some items are no longer available: {names}",
     "pay_unavailable": "Online payment isn’t available right now",

@@ -5,7 +5,8 @@ import { useTranslations } from "next-intl";
 import type { BoxSelection, CategoryRow, Product } from "@/lib/types";
 import { CATEGORY_ORDER } from "@/lib/types";
 import { useCartStore } from "@/store/cart";
-import { Plus, Check, Settings2 } from "lucide-react";
+import { Plus, Check, Settings2, Bike, ShoppingBag } from "lucide-react";
+import { NEARBY_MAX_KM, type DeliveryRule } from "@/lib/delivery-zones";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ComboConfigurator from "./ComboConfigurator";
 import BoxConfigurator from "./BoxConfigurator";
@@ -21,10 +22,12 @@ function ProductCard({
   product,
   locale,
   productsById,
+  deliveryRule,
 }: {
   product: Product;
   locale: string;
   productsById: Map<string, Product>;
+  deliveryRule?: DeliveryRule;
 }) {
   const t = useTranslations("menu");
   const { addItem, addBox } = useCartStore();
@@ -122,6 +125,18 @@ function ProductCard({
       <div className="p-6">
         <h3 className="font-black text-2xl mb-2 leading-tight">{name}</h3>
         <p className="text-gray-500 text-sm leading-relaxed mb-5 line-clamp-3">{description}</p>
+        {deliveryRule === "nearby" && (
+          <p className="flex items-center gap-1.5 text-xs font-medium text-gray-600 -mt-2 mb-4">
+            <Bike aria-hidden="true" className="w-4 h-4 shrink-0" style={{ color: "#8b0031" }} />
+            {t("delivery_nearby", { km: NEARBY_MAX_KM })}
+          </p>
+        )}
+        {deliveryRule === "none" && (
+          <p className="flex items-center gap-1.5 text-xs font-medium text-gray-600 -mt-2 mb-4">
+            <ShoppingBag aria-hidden="true" className="w-4 h-4 shrink-0" style={{ color: "#8b0031" }} />
+            {t("delivery_none")}
+          </p>
+        )}
         {product.available && hasPrice ? (
           <button
             onClick={handleAdd}
@@ -194,6 +209,7 @@ function CategorySection({
   title,
   emptyLabel,
   productsById,
+  deliveryRule,
 }: {
   slug: string;
   products: Product[];
@@ -201,6 +217,7 @@ function CategorySection({
   title: string;
   emptyLabel: string;
   productsById: Map<string, Product>;
+  deliveryRule?: DeliveryRule;
 }) {
   return (
     <section id={`cat-${slug}`} className="scroll-mt-36">
@@ -222,6 +239,7 @@ function CategorySection({
               product={product}
               locale={locale}
               productsById={productsById}
+              deliveryRule={deliveryRule}
             />
           ))}
         </div>
@@ -263,7 +281,7 @@ export default function ProductGrid({ products, categories, locale }: Props) {
   // If DB categories are provided, use them (skipping admin-hidden ones).
   // Otherwise fall back to the legacy hardcoded list (keeps the mock-data/dev
   // path working).
-  const displayCategories = useMemo(() => {
+  const displayCategories = useMemo((): CategoryRow[] => {
     if (categories.length > 0)
       return categories
         .filter((c) => c.visible !== false)
@@ -338,6 +356,7 @@ export default function ProductGrid({ products, categories, locale }: Props) {
           title={locale === "en" ? c.label_en : c.label_es}
           emptyLabel={t("coming_soon")}
           productsById={productsById}
+          deliveryRule={c.delivery_rule}
         />
       ))}
     </div>

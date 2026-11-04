@@ -9,9 +9,12 @@ import { ShoppingBag, ArrowLeft, Loader2, CreditCard, QrCode, Info, MessageCircl
 import {
   allowedFulfillments,
   getZone,
+  NEARBY_MAX_KM,
   onlinePaymentAllowed,
   OUTSIDE_CITY_ZONE_ID,
+  strictestRule,
   zoneAllowed,
+  type DeliveryRule,
   type Fulfillment,
 } from "@/lib/delivery-zones";
 import type { BoldClientConfig } from "@/lib/bold";
@@ -43,7 +46,14 @@ type FieldKey = keyof FormData | "zone";
 type Errors = Partial<Record<FieldKey, string>>;
 
 type CheckoutOk = { orderId: string; total: number; whatsappUrl?: string; bold?: BoldClientConfig };
-type CheckoutErr = { error?: string; unavailable?: string[]; orderId?: string; closed?: boolean; opensAt?: string };
+type CheckoutErr = {
+  error?: string;
+  unavailable?: string[];
+  orderId?: string;
+  closed?: boolean;
+  opensAt?: string;
+  deliveryRestricted?: boolean;
+};
 
 type PreparedPayment = { key: string; orderId: string; total: number; bold: BoldClientConfig };
 
@@ -51,6 +61,7 @@ interface Props {
   locale: string;
   boldEnabled: boolean;
   merchCategorySlugs: string[];
+  categoryDeliveryRules: Record<string, DeliveryRule>;
 }
 
 const money = (n: number) => `$${n.toLocaleString("es-CO")}`;
@@ -144,10 +155,10 @@ function Section({ title, children }: { title?: string; children: React.ReactNod
   );
 }
 
-export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs }: Props) {
+export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs, categoryDeliveryRules }: Props) {
   const t = useTranslations("checkout");
   const tCart = useTranslations("cart");
-  const { items, total, clearCart, hydrated } = useCartStore();
+  const { items, total, clearCart, removeItem, hydrated } = useCartStore();
   const router = useRouter();
   const bold = useBoldCheckout(boldEnabled);
   const formRef = useRef<HTMLFormElement>(null);
@@ -188,11 +199,19 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
   const merchSlugs = useMemo(() => new Set(merchCategorySlugs), [merchCategorySlugs]);
   const hasMerch = items.some((i) => merchSlugs.has(i.product.category));
   const hasFood = items.some((i) => !merchSlugs.has(i.product.category));
+  const ruleOf = (slug: string): DeliveryRule => categoryDeliveryRules[slug] ?? "any";
+  const deliveryRule = strictestRule(items.map((i) => ruleOf(i.product.category)));
+  const itemsWithRule = (rule: DeliveryRule) => items.filter((i) => ruleOf(i.product.category) === rule);
+  const itemNames = (list: typeof items) =>
+    [...new Set(list.map((i) => (locale === "en" ? i.product.name_en : i.product.name_es).trim()))].join(", ");
+  const undeliverable = itemsWithRule("none");
   // «Comer en el local» makes no sense while the shop is closed.
-  const options = allowedFulfillments({ hasMerch }).filter((f) => !(isClosed && f === "dine_in"));
-  const fulfillment = options.includes(fulfillmentChoice) ? fulfillmentChoice : options[0];
-  const isDelivery = fulfillment === "delivery";
-  const zoneId = isDelivery && zoneChoice && zoneAllowed(zoneChoice, { hasFood }) ? zoneChoice : null;
+  const options = allowedFulfillments({ hasMerch, deliveryRule }).filter((f) => !(isClosed && f === "dine_in"));
+  // Merch (delivery only) with a drink (no delivery): nothing can be selected.
+  const noFulfillment = options.length === 0;
+  const fulfillment = options.includes(fulfillmentChoice) ? fulfillmentChoice : (options[0] ?? "delivery");
+  const isDelivery = !noFulfillment && fulfillment === "delivery";
+  const zoneId = isDelivery && zoneChoice && zoneAllowed(zoneChoice, { hasFood, deliveryRule }) ? zoneChoice : null;
   const zone = zoneId ? getZone(zoneId) : undefined;
   const isOutsideCity = zoneId === OUTSIDE_CITY_ZONE_ID;
 
@@ -232,7 +251,7 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
   // «Pagar» is hidden for barrios whose fee is agreed over WhatsApp. With no
   // barrio picked yet it stays visible; validation asks for the barrio.
   const zoneBlocksOnline = isDelivery && zone !== undefined && !onlinePaymentAllowed(zone, fulfillment);
-  const showPay = boldEnabled && !zoneBlocksOnline && !bold.failed && displayTotal >= BOLD_MIN_AMOUNT;
+  const showPay = boldEnabled && !noFulfillment && !zoneBlocksOnline && !bold.failed && displayTotal >= BOLD_MIN_AMOUNT;
   const showPayUnavailable = boldEnabled && !zoneBlocksOnline && bold.failed;
   const busy = pending !== null;
 
@@ -294,6 +313,11 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
       setScheduleAccepted(false);
       setScheduleError(true);
       toast.warning(t("closed_now"));
+      return;
+    }
+    if (data.deliveryRestricted) {
+      // The rules changed while this page was open: say why, not «try again».
+      toast.error(t("delivery_rejected"));
       return;
     }
     if (status === 409 && data.unavailable?.length) {
@@ -518,12 +542,36 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
             )}
 
             <Section>
-              <FulfillmentPicker
-                value={fulfillment}
-                onChange={setFulfillmentChoice}
-                options={options}
-                note={hasMerch ? t("merch_delivery_only") : undefined}
-              />
+              {noFulfillment ? (
+                <p role="alert" className="flex items-start gap-2 rounded-xl bg-[#fdf8f0] px-4 py-3 text-sm text-gray-700">
+                  <Info aria-hidden="true" className="w-4 h-4 mt-0.5 shrink-0" style={{ color: BRAND }} />
+                  {t("delivery_conflict", { names: itemNames(undeliverable) })}
+                </p>
+              ) : (
+                <FulfillmentPicker
+                  value={fulfillment}
+                  onChange={setFulfillmentChoice}
+                  options={options}
+                  disabledOptions={deliveryRule === "none" ? ["delivery"] : []}
+                  note={
+                    deliveryRule === "none"
+                      ? t("delivery_none_note", { names: itemNames(undeliverable) })
+                      : hasMerch
+                        ? t("merch_delivery_only")
+                        : undefined
+                  }
+                />
+              )}
+              {undeliverable.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => undeliverable.forEach((i) => removeItem(i.lineId))}
+                  className="mt-3 min-h-11 text-left text-sm font-semibold underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8b0031]"
+                  style={{ color: BRAND }}
+                >
+                  {t("delivery_none_remove", { names: itemNames(undeliverable) })}
+                </button>
+              )}
             </Section>
 
             <Section title={t("your_details")}>
@@ -564,6 +612,12 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
 
             {isDelivery && (
               <Section title={t("fulfillment_delivery")}>
+                {deliveryRule === "nearby" && (
+                  <p className="flex items-start gap-2 rounded-xl bg-[#fdf8f0] px-4 py-3 text-sm text-gray-700">
+                    <Info aria-hidden="true" className="w-4 h-4 mt-0.5 shrink-0" style={{ color: BRAND }} />
+                    {t("delivery_nearby_note", { names: itemNames(itemsWithRule("nearby")), km: NEARBY_MAX_KM })}
+                  </p>
+                )}
                 <ZoneCombobox
                   value={zoneId}
                   onChange={(id) => {
@@ -571,6 +625,15 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
                     if (id) setErrors((e) => ({ ...e, zone: undefined }));
                   }}
                   allowOutsideCity={!hasFood}
+                  isBlocked={(z) => !zoneAllowed(z.id, { hasFood, deliveryRule })}
+                  blockedHint={
+                    deliveryRule === "nearby"
+                      ? t("zone_out_of_range_hint", {
+                          names: itemNames(itemsWithRule("nearby")),
+                          km: NEARBY_MAX_KM,
+                        })
+                      : undefined
+                  }
                   error={errors.zone}
                 />
                 {isOutsideCity && (
@@ -778,7 +841,7 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
                   type="submit"
                   form={formId}
                   data-method="qr"
-                  disabled={busy}
+                  disabled={busy || noFulfillment}
                   aria-busy={pending === "qr" ? true : undefined}
                   className={`w-full flex items-center justify-center gap-3 font-bold rounded-full transition-all disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8b0031] ${
                     qrIsPrimary

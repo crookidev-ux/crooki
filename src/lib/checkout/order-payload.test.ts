@@ -53,7 +53,7 @@ test("delivery order carries zone name, fee and recipient phone", () => {
     notes: "Timbre 2",
     delivery: { zoneId: "1-de-mayo", address: "Cra 1 #2-3", recipientPhone: "3109876543" },
   };
-  const zone = { id: "1-de-mayo", name: "1° de Mayo", sector: "UCG 6", fee: 19500 };
+  const zone = { id: "1-de-mayo", name: "1° de Mayo", sector: "UCG 6", fee: 19500, km: 5 };
   const p = buildOrderPayload(input, { lines, deliveryFee: 19500, total: 29500, zone });
   assert.equal(p.customer_address, "Cra 1 #2-3");
   assert.equal(p.delivery_zone, "1° de Mayo");

@@ -1,4 +1,4 @@
-import type { Fulfillment } from "./delivery-zones";
+import type { DeliveryRule, Fulfillment } from "./delivery-zones";
 
 export type Locale = "es" | "en";
 
@@ -28,6 +28,8 @@ export interface CategoryRow {
   // Hidden categories (visible=false) are editable in the admin but excluded
   // from the customer pages. Optional so mock/legacy rows default to shown.
   visible?: boolean;
+  // Optional for the mock fallback; a missing rule shows no menu label.
+  delivery_rule?: DeliveryRule;
   created_at?: string;
 }
 

@@ -7,6 +7,8 @@ import {
   zoneAllowed,
   onlinePaymentAllowed,
   deliveryFeeSettled,
+  parseDeliveryRule,
+  strictestRule,
   OUTSIDE_CITY_ZONE_ID,
 } from "./delivery-zones.ts";
 import { DELIVERY_ZONES } from "./delivery-zones.data.ts";
@@ -63,4 +65,63 @@ test("onlinePaymentAllowed", () => {
   assert.equal(onlinePaymentAllowed(getZone("bocagrande"), "delivery"), true);
   assert.equal(onlinePaymentAllowed(undefined, "delivery"), false);
   assert.equal(onlinePaymentAllowed(undefined, "pickup"), true);
+});
+
+test("zones carry the driving distance from the spreadsheet", () => {
+  assert.equal(getZone("bocagrande")?.km, 4.6);
+  assert.equal(getZone("los-ejecutivos")?.km, 8.4);
+  assert.equal(getZone("barcelona-de-indias")?.km, null);
+  assert.equal(getZone(OUTSIDE_CITY_ZONE_ID)?.km, null);
+});
+
+test("strictestRule: none beats nearby beats any", () => {
+  assert.equal(strictestRule([]), "any");
+  assert.equal(strictestRule(["any", "any"]), "any");
+  assert.equal(strictestRule(["any", "nearby"]), "nearby");
+  assert.equal(strictestRule(["nearby", "none", "any"]), "none");
+});
+
+test("parseDeliveryRule fails closed on unknown values", () => {
+  assert.equal(parseDeliveryRule("any"), "any");
+  assert.equal(parseDeliveryRule("nearby"), "nearby");
+  assert.equal(parseDeliveryRule("none"), "none");
+  assert.equal(parseDeliveryRule(undefined), "none");
+  assert.equal(parseDeliveryRule("cerca"), "none");
+});
+
+test("allowedFulfillments honors the cart's delivery rule", () => {
+  assert.deepEqual(allowedFulfillments({ hasMerch: false, deliveryRule: "none" }), ["pickup", "dine_in"]);
+  assert.deepEqual(
+    allowedFulfillments({ hasMerch: false, deliveryRule: "nearby" }),
+    ["delivery", "pickup", "dine_in"],
+  );
+  // Merch can only be delivered and drinks can't: no way to fulfill this cart.
+  assert.deepEqual(allowedFulfillments({ hasMerch: true, deliveryRule: "none" }), []);
+  assert.deepEqual(allowedFulfillments({ hasMerch: true, deliveryRule: "nearby" }), ["delivery"]);
+});
+
+test("nearby rule: up to 6 km inclusive, plus the El Laguito exception", () => {
+  const nearby = { hasFood: true, deliveryRule: "nearby" as const };
+  assert.equal(zoneAllowed("bocagrande", nearby), true);
+  assert.equal(getZone("morros")?.km, 6);
+  assert.equal(zoneAllowed("morros", nearby), true);
+  assert.equal(getZone("el-laguito")?.km, 6.1);
+  assert.equal(zoneAllowed("el-laguito", nearby), true);
+  assert.equal(getZone("santa-maria")?.km, 6.1);
+  assert.equal(zoneAllowed("santa-maria", nearby), false);
+  assert.equal(zoneAllowed("los-ejecutivos", nearby), false);
+});
+
+test("nearby rule: no distance or no fixed fee stays out of reach", () => {
+  const nearby = { hasFood: true, deliveryRule: "nearby" as const };
+  assert.equal(zoneAllowed("barcelona-de-indias", nearby), false);
+  // Tierra Bomba is an island: 5.7 km on the map but no fee.
+  assert.equal(zoneAllowed("tierra-bomba", nearby), false);
+  assert.equal(zoneAllowed("no-existe", nearby), false);
+});
+
+test("zoneAllowed: rule none blocks every zone; any keeps far zones", () => {
+  assert.equal(zoneAllowed("bocagrande", { hasFood: true, deliveryRule: "none" }), false);
+  assert.equal(zoneAllowed("los-ejecutivos", { hasFood: true, deliveryRule: "any" }), true);
+  assert.equal(zoneAllowed("fuera-de-cartagena", { hasFood: false, deliveryRule: "any" }), true);
 });

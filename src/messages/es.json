@@ -45,7 +45,9 @@
     "add_to_cart": "Agregar",
     "sold_out": "Agotado",
     "price_unit": "c/u",
-    "coming_soon": "Próximamente"
+    "coming_soon": "Próximamente",
+    "delivery_nearby": "Domicilio hasta {km} km",
+    "delivery_none": "Solo para recoger o comer en el local"
   },
   "categories": {
     "galletas": "Galletas",
@@ -122,6 +124,14 @@
     "pay_qr": "Pagar con QR",
     "pay_qr_only_note": "Para este destino confirmamos el domicilio por WhatsApp",
     "merch_delivery_only": "La mercancía se entrega a domicilio",
+    "delivery_rejected": "Algún producto de tu pedido ya no se puede enviar a ese destino. Recarga la página para ver las opciones de entrega.",
+    "fulfillment_unavailable": "No disponible",
+    "zone_out_of_range_hint": "Tu pedido lleva {names}, que solo entregamos hasta {km} km para que no se derrita. Si tu barrio queda más lejos, quítalo del pedido o elige recoger en el local.",
+    "delivery_none_note": "Para que lleguen en su punto, las bebidas no salen a domicilio: {names}. Puedes recoger tu pedido en el local.",
+    "delivery_none_remove": "Prefiero domicilio: quitar {names}",
+    "delivery_conflict": "No podemos entregar este pedido junto: la mercancía solo va a domicilio y estas bebidas no se envían, para que lleguen en su punto: {names}. Quítalas de este pedido y pídelas aparte para recoger o tomar en el local.",
+    "delivery_nearby_note": "Para que no se derrita en el camino, {names} solo se entrega hasta {km} km del local. Si tu barrio queda más lejos, puedes recoger tu pedido en el local.",
+    "zone_out_of_range": "Muy lejos para tu pedido",
     "price_changed": "Actualizamos los precios de tu pedido. Revisa el total antes de pagar.",
     "unavailable": "Algunos productos ya no están disponibles: {names}",
     "pay_unavailable": "El pago en línea no está disponible en este momento",

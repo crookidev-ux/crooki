@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Loader2, Trash2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import type { CategoryKind, CategoryRow } from "@/lib/types";
+import { NEARBY_MAX_KM, type DeliveryRule } from "@/lib/delivery-zones";
 
 interface Props {
   locale: string;
@@ -32,6 +33,7 @@ export default function CategoryFormClient({ locale, mode, category }: Props) {
     kind: (category?.kind ?? "menu") as CategoryKind,
     display_order: category?.display_order?.toString() ?? "0",
     visible: category?.visible ?? true,
+    delivery_rule: (category?.delivery_rule ?? "any") as DeliveryRule,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -50,6 +52,7 @@ export default function CategoryFormClient({ locale, mode, category }: Props) {
       kind: form.kind,
       display_order: parseInt(form.display_order) || 0,
       visible: form.visible,
+      delivery_rule: form.delivery_rule,
     };
 
     const { error } =
@@ -222,6 +225,25 @@ export default function CategoryFormClient({ locale, mode, category }: Props) {
           <p className="text-xs text-gray-400 mt-1">
             Las categorías ocultas no aparecen en el menú ni en merch, pero siguen
             siendo editables en el panel.
+          </p>
+        </div>
+
+        <div>
+          <label htmlFor="category-delivery-rule" className="block text-sm font-semibold mb-1.5 text-gray-700">
+            Domicilio
+          </label>
+          <select
+            id="category-delivery-rule"
+            value={form.delivery_rule}
+            onChange={(e) => setForm({ ...form, delivery_rule: e.target.value as DeliveryRule })}
+            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm bg-white focus:outline-none focus:ring-2"
+          >
+            <option value="any">Sin límite de distancia</option>
+            <option value="nearby">Solo hasta {NEARBY_MAX_KM} km</option>
+            <option value="none">Sin domicilio (solo recoger o comer en el local)</option>
+          </select>
+          <p className="text-xs text-gray-400 mt-1">
+            Un pedido sigue la regla más estricta entre sus productos.
           </p>
         </div>
 

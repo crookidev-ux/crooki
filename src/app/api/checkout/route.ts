@@ -58,7 +58,12 @@ export async function POST(request: Request) {
       input.items.map((i) => i.productId),
     );
     const priced = priceCart(input, catalog);
-    if (!priced.ok) return error(priced.status, priced.error, priced.unavailable);
+    if (!priced.ok) {
+      if (priced.deliveryRestricted) {
+        return Response.json({ error: priced.error, deliveryRestricted: true }, { status: priced.status });
+      }
+      return error(priced.status, priced.error, priced.unavailable);
+    }
 
     if (input.paymentMethod === "bold" && priced.total < BOLD_MIN_AMOUNT) {
       return error(400, `Online payment requires a total of at least ${BOLD_MIN_AMOUNT} COP`);
