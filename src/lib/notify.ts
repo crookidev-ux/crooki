@@ -1,6 +1,7 @@
 // Server-only: emails the shop when an order is paid (spec §7.6 b). Uses
 // RESEND_API_KEY, so import it only from server code. Without RESEND_API_KEY or
 // ORDER_NOTIFY_EMAIL it does nothing; it never throws.
+import "server-only";
 import type { Fulfillment, Order, OrderItem } from "@/lib/types";
 import { scheduledLabelEs } from "./store-hours.ts";
 

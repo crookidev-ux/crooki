@@ -1,3 +1,4 @@
+import "server-only";
 import { createHash, createHmac, randomInt, timingSafeEqual } from "node:crypto";
 
 export const BOLD_MIN_AMOUNT = 1000;
