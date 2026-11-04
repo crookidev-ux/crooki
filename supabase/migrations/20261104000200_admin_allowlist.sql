@@ -36,8 +36,11 @@ AS $$
   SELECT EXISTS (SELECT 1 FROM public.admin_users WHERE user_id = auth.uid());
 $$;
 
-REVOKE ALL ON FUNCTION public.is_admin() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.is_admin() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
+-- anon too: it always gets false, so policies deny with an empty result
+-- instead of a "permission denied for function" error (added 2026-11-04).
+GRANT EXECUTE ON FUNCTION public.is_admin() TO anon;
 
 -- Seed: the three accounts that exist today, all approved as admins.
 INSERT INTO public.admin_users (user_id)
