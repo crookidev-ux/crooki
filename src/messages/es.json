@@ -124,6 +124,8 @@
     "pay_qr": "Pagar con QR",
     "pay_qr_only_note": "Para este destino confirmamos el domicilio por WhatsApp",
     "merch_delivery_only": "La mercancía se entrega a domicilio",
+    "captcha_wait": "Estamos verificando que no eres un robot. Intenta de nuevo en unos segundos.",
+    "captcha_failed": "No pudimos verificar que no eres un robot. Recarga la página e inténtalo de nuevo.",
     "delivery_rejected": "Algún producto de tu pedido ya no se puede enviar a ese destino. Recarga la página para ver las opciones de entrega.",
     "fulfillment_unavailable": "No disponible",
     "zone_out_of_range_hint": "Tu pedido lleva {names}, que solo entregamos hasta {km} km para que no se derrita. Si tu barrio queda más lejos, quítalo del pedido o elige recoger en el local.",

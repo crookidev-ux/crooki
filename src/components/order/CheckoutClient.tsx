@@ -25,6 +25,9 @@ import ZoneCombobox from "./ZoneCombobox";
 import { useBoldCheckout } from "./useBoldCheckout";
 import { useStoreHours } from "./useStoreHours";
 import { openingDayLabel } from "@/lib/store-hours";
+import TurnstileWidget, { type TurnstileHandle } from "./TurnstileWidget";
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
 // Mirrors BOLD_MIN_AMOUNT in src/lib/bold.ts, which can't be imported here
 // (it pulls in node:crypto). The server enforces the real limit.
@@ -53,6 +56,7 @@ type CheckoutErr = {
   closed?: boolean;
   opensAt?: string;
   deliveryRestricted?: boolean;
+  captcha?: boolean;
 };
 
 type PreparedPayment = { key: string; orderId: string; total: number; bold: BoldClientConfig };
@@ -164,6 +168,8 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
   const formRef = useRef<HTMLFormElement>(null);
   // Synchronous double-tap guard (render state lags behind fast taps).
   const inFlight = useRef(false);
+  const turnstileRef = useRef<TurnstileHandle>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   const [form, setForm] = useState<FormData>({
     name: "",
@@ -315,6 +321,10 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
       toast.warning(t("closed_now"));
       return;
     }
+    if (data.captcha) {
+      toast.error(t("captcha_failed"));
+      return;
+    }
     if (data.deliveryRestricted) {
       // The rules changed while this page was open: say why, not «try again».
       toast.error(t("delivery_rejected"));
@@ -332,14 +342,23 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
     toast.error(t("error_generic"));
   };
 
+  // A Turnstile token is single use: every request gets a fresh one.
+  const captchaReady = !TURNSTILE_SITE_KEY || captchaToken !== null;
   const postCheckout = async (body: string) => {
-    const res = await fetch("/api/checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body,
-    });
-    const data = (await res.json().catch(() => ({}))) as CheckoutOk & CheckoutErr;
-    return { res, data };
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(captchaToken ? { "x-turnstile-token": captchaToken } : {}),
+        },
+        body,
+      });
+      const data = (await res.json().catch(() => ({}))) as CheckoutOk & CheckoutErr;
+      return { res, data };
+    } finally {
+      turnstileRef.current?.reset();
+    }
   };
 
   const openPayment = (p: PreparedPayment) => {
@@ -358,6 +377,10 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
     if (!bold.ready) return;
     if (activePrepared) {
       openPayment(activePrepared);
+      return;
+    }
+    if (!captchaReady) {
+      toast.info(t("captcha_wait"));
       return;
     }
     const key = boldKey;
@@ -388,6 +411,10 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
 
   const payByQr = async () => {
     if (inFlight.current || busy || !validate()) return;
+    if (!captchaReady) {
+      toast.info(t("captcha_wait"));
+      return;
+    }
     inFlight.current = true;
     // With a final total the order page shows the shop's QR and the customer
     // writes on WhatsApp after paying. Only a «Consultar» destination (fee
@@ -805,6 +832,14 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
               )}
 
               <div className="mt-6 flex flex-col gap-3">
+                {TURNSTILE_SITE_KEY && (
+                  <TurnstileWidget
+                    ref={turnstileRef}
+                    siteKey={TURNSTILE_SITE_KEY}
+                    locale={locale === "en" ? "en" : "es"}
+                    onToken={setCaptchaToken}
+                  />
+                )}
                 {zoneBlocksOnline && boldEnabled && (
                   <p className="flex items-start gap-2 rounded-xl bg-[#fdf8f0] px-4 py-3 text-sm text-gray-700">
                     <Info aria-hidden="true" className="w-4 h-4 mt-0.5 shrink-0" style={{ color: BRAND }} />

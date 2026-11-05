@@ -12,6 +12,7 @@ import { createAttempt, OrderNotPayableError } from "@/lib/payments";
 import { buildWhatsAppOrderUrl } from "@/lib/whatsapp";
 import { sendCustomerOrderEmail } from "@/lib/notify";
 import { storeStatus } from "@/lib/store-hours";
+import { verifyTurnstile } from "@/lib/turnstile";
 import { after } from "next/server";
 
 type CheckoutResponse = {
@@ -30,6 +31,15 @@ export async function POST(request: Request) {
     body = await request.json();
   } catch {
     return error(400, "Invalid JSON body");
+  }
+
+  // Bots: every new order needs a fresh Turnstile token (sent in a header so
+  // the order body, which keys the reusable Bold payment, stays the same).
+  const ip = request.headers.get("x-real-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
+  const captcha = await verifyTurnstile(request.headers.get("x-turnstile-token"), ip);
+  if (!captcha.ok) {
+    console.warn("[checkout] turnstile rejected", captcha.codes);
+    return Response.json({ error: "Verification failed", captcha: true }, { status: 403 });
   }
 
   const parsed = parseCheckoutInput(body);

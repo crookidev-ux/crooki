@@ -124,6 +124,8 @@
     "pay_qr": "Pay with QR",
     "pay_qr_only_note": "For this destination we confirm the delivery fee over WhatsApp",
     "merch_delivery_only": "Merchandise is delivered to your door",
+    "captcha_wait": "We’re checking that you’re not a robot. Try again in a few seconds.",
+    "captcha_failed": "We couldn’t verify that you’re not a robot. Reload the page and try again.",
     "delivery_rejected": "An item in your order can no longer be delivered there. Reload the page to see your delivery options.",
     "fulfillment_unavailable": "Not available",
     "zone_out_of_range_hint": "Your order has {names}, which we only deliver within {km} km so it doesn’t melt. If you’re farther away, remove it from the order or choose pick-up at the shop.",

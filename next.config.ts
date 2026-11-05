@@ -22,6 +22,9 @@ const SUPABASE_WS = SUPABASE.replace(/^https:/, "wss:");
 // payment window (iframe) and calls Bold's APIs from the browser.
 const BOLD = "https://checkout.bold.co https://*.bold.co";
 
+// Cloudflare Turnstile (anti-bot check on the checkout): script + iframe.
+const TURNSTILE = "https://challenges.cloudflare.com";
+
 // Content-Security-Policy is sent as **Report-Only** for now: the browser only
 // logs what it would block and nothing breaks. The Bold checkout loads more
 // third-party resources than we can list from our code alone (iframes, its own
@@ -35,13 +38,13 @@ const BOLD = "https://checkout.bold.co https://*.bold.co";
 // hosted) and images go through next/image (/_next/image), so both are 'self'.
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} ${BOLD}`,
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} ${BOLD} ${TURNSTILE}`,
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob: ${SUPABASE} ${BOLD}`,
   `media-src 'self' blob: ${SUPABASE}`,
   "font-src 'self' data:",
-  `connect-src 'self' ${SUPABASE} ${SUPABASE_WS} ${BOLD}`,
-  `frame-src ${BOLD}`,
+  `connect-src 'self' ${SUPABASE} ${SUPABASE_WS} ${BOLD} ${TURNSTILE}`,
+  `frame-src ${BOLD} ${TURNSTILE}`,
   "object-src 'none'",
   "base-uri 'self'",
   `form-action 'self' ${BOLD}`,
