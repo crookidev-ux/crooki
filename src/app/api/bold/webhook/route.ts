@@ -5,6 +5,8 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import { isBoldConfigured, verifyWebhookSignature } from "@/lib/bold";
 import { confirmAttempt } from "@/lib/payments";
+import { sendPaymentAlert } from "@/lib/notify";
+import { after } from "next/server";
 
 const ok = () => Response.json({ received: true });
 
@@ -24,6 +26,9 @@ export async function POST(request: Request) {
   const raw = await request.text();
   if (!verifyWebhookSignature(raw, request.headers.get("x-bold-signature"), process.env.BOLD_SECRET_KEY!)) {
     console.warn("[bold/webhook] invalid signature");
+    const ip = request.headers.get("x-real-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
+    const userAgent = request.headers.get("user-agent");
+    after(() => sendPaymentAlert({ kind: "invalid_signature", ip, userAgent, at: new Date().toISOString() }));
     return Response.json({ error: "Invalid signature" }, { status: 401 });
   }
 

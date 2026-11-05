@@ -11,7 +11,7 @@ import {
   hasSystemNote,
   withNote,
 } from "@/lib/payments.confirm";
-import { sendCustomerOrderEmail, sendPaidOrderEmail } from "@/lib/notify";
+import { sendCustomerOrderEmail, sendPaidOrderEmail, sendPaymentAlert } from "@/lib/notify";
 import { after } from "next/server";
 import type { Order, OrderItem } from "@/lib/types";
 
@@ -191,6 +191,16 @@ export async function confirmAttempt(
   if (decision.amountMismatch) {
     console.error(`${tag}: amount mismatch (Bold ${event.amount}, attempt ${amount}); order not marked paid`);
     await appendOrderNote(supabase, order.id, AMOUNT_MISMATCH_NOTE);
+    after(() =>
+      sendPaymentAlert({
+        kind: "amount_mismatch",
+        orderId: order.id,
+        boldOrderId,
+        expected: amount,
+        received: event.amount,
+        at: now,
+      }),
+    );
   }
 
   if (decision.attempt !== "unchanged") {

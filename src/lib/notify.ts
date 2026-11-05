@@ -189,3 +189,76 @@ export async function sendPaidOrderEmail(
     console.error(`[notify] paid-order email failed for order ${order.id}`, e);
   }
 }
+
+export type PaymentAlert =
+  | { kind: "invalid_signature"; ip: string | null; userAgent: string | null; at: string }
+  | { kind: "amount_mismatch"; orderId: string; boldOrderId: string; expected: number; received: number | undefined; at: string };
+
+/** Subject and body of the alert sent to the shop when a payment looks wrong. */
+export function buildPaymentAlertEmail(alert: PaymentAlert): { subject: string; text: string } {
+  if (alert.kind === "invalid_signature") {
+    return {
+      subject: "⚠️ Crooki: aviso de pago con firma inválida (rechazado)",
+      text: [
+        "Llegó a la web un aviso de «pago» que NO venía de Bold: la firma no coincide.",
+        "El servidor lo rechazó y ningún pedido se marcó como pagado.",
+        "",
+        `Fecha: ${alert.at}`,
+        `IP: ${alert.ip ?? "desconocida"}`,
+        `Navegador: ${alert.userAgent ?? "desconocido"}`,
+        "",
+        "Si se repite, puede ser alguien intentando que despachen un pedido sin pagar.",
+        "No despaches ningún pedido que no aparezca como «Pagado» en el admin.",
+        "Este aviso se manda como máximo una vez cada 10 minutos.",
+      ].join("\n"),
+    };
+  }
+  const code = alert.orderId.slice(0, 8).toUpperCase();
+  return {
+    subject: `⚠️ Crooki: monto distinto en el pago del pedido #${code}`,
+    text: [
+      `Bold confirmó un pago del pedido #${code} por un valor distinto al total.`,
+      "El pedido NO se marcó como pagado. Revísalo antes de despacharlo.",
+      "",
+      `Total del pedido: $${alert.expected.toLocaleString("es-CO")}`,
+      `Monto que reportó Bold: ${alert.received === undefined ? "sin monto" : `$${alert.received.toLocaleString("es-CO")}`}`,
+      `Referencia de Bold: ${alert.boldOrderId}`,
+      `Pedido: ${alert.orderId}`,
+      `Fecha: ${alert.at}`,
+      "",
+      "Compara en panel.bold.co → Transacciones y decide si se despacha o se devuelve el dinero.",
+    ].join("\n"),
+  };
+}
+
+// Invalid signatures can be sent by anyone, so they are throttled per server
+// instance: at most one email every 10 minutes. Amount mismatches come signed
+// by Bold and are rare, so each one is sent.
+const ALERT_THROTTLE_MS = 10 * 60 * 1000;
+let lastSignatureAlert = 0;
+
+/** Emails ORDER_NOTIFY_EMAIL about a suspicious payment event. Never throws. */
+export async function sendPaymentAlert(alert: PaymentAlert, now = Date.now()): Promise<void> {
+  if (alert.kind === "invalid_signature") {
+    if (now - lastSignatureAlert < ALERT_THROTTLE_MS) return;
+    lastSignatureAlert = now;
+  }
+  const apiKey = process.env.RESEND_API_KEY;
+  const to = parseRecipients(process.env.ORDER_NOTIFY_EMAIL ?? "");
+  if (!apiKey || to.length === 0) return;
+
+  try {
+    const { subject, text } = buildPaymentAlertEmail(alert);
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: process.env.ORDER_NOTIFY_FROM || DEFAULT_FROM, to, subject, text }),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) {
+      console.error(`[notify] payment alert HTTP ${res.status}: ${await res.text().catch(() => "")}`);
+    }
+  } catch (e) {
+    console.error("[notify] payment alert failed", e);
+  }
+}

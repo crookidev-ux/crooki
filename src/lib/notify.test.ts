@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildCustomerOrderEmail, buildPaidOrderEmail, parseRecipients } from "./notify.ts";
+import { buildCustomerOrderEmail, buildPaidOrderEmail, buildPaymentAlertEmail, parseRecipients } from "./notify.ts";
 
 const order = {
   id: "3f2a9c1e-aaaa-bbbb-cccc-000000000000",
@@ -81,4 +81,22 @@ test("buildCustomerOrderEmail links the order page in both languages", () => {
   const received = buildCustomerOrderEmail({ id, customer_name: "", total: 38000 }, "received");
   assert.equal(received.subject, "Pedido recibido #A7D97215 — Crooki");
   assert.ok(received.text.includes("¡Hola! Recibimos tu pedido #A7D97215"));
+});
+
+test("payment alert: invalid signature says it was rejected", () => {
+  const { subject, text } = buildPaymentAlertEmail({ kind: "invalid_signature", ip: "1.2.3.4", userAgent: "curl", at: "2026-11-04T20:00:00Z" });
+  assert.match(subject, /firma inválida/);
+  assert.match(text, /rechazó/);
+  assert.match(text, /1\.2\.3\.4/);
+});
+
+test("payment alert: amount mismatch shows both amounts and the order code", () => {
+  const { subject, text } = buildPaymentAlertEmail({
+    kind: "amount_mismatch", orderId: "3f2a9c1e-aaaa-bbbb-cccc-000000000000", boldOrderId: "CRK-3F2A9C1E-X",
+    expected: 29900, received: 1000, at: "2026-11-04T20:00:00Z",
+  });
+  assert.match(subject, /#3F2A9C1E/);
+  assert.match(text, /\$29\.900/);
+  assert.match(text, /\$1\.000/);
+  assert.match(text, /NO se marcó como pagado/);
 });
