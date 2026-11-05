@@ -3,6 +3,7 @@ import createNextIntlPlugin from "next-intl/plugin";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
+// Next.js dev mode (React refresh) needs eval; production never gets it.
 const isDev = process.env.NODE_ENV === "development";
 
 // Our Supabase project (API, auth, storage: product photos and the
@@ -25,17 +26,17 @@ const BOLD = "https://checkout.bold.co https://*.bold.co";
 // Cloudflare Turnstile (anti-bot check on the checkout): script + iframe.
 const TURNSTILE = "https://challenges.cloudflare.com";
 
-// Content-Security-Policy is sent as **Report-Only** for now: the browser only
-// logs what it would block and nothing breaks. The Bold checkout loads more
-// third-party resources than we can list from our code alone (iframes, its own
-// APIs, possibly anti-fraud scripts), and a wrong enforced CSP would stop
-// people from paying. Plan: watch the console on / and /pedido (and a test
-// payment) for violations, add what is missing, then switch the key to
-// `Content-Security-Policy`. 'unsafe-inline' in script-src is needed because
-// Next.js injects inline bootstrap scripts and the JSON-LD tag; removing it
-// requires nonces through the proxy (see node_modules/next/dist/docs/01-app/
-// 02-guides/content-security-policy.md). Fonts come from next/font (self
-// hosted) and images go through next/image (/_next/image), so both are 'self'.
+// Content-Security-Policy, enforced since 2026-11-04. It was Report-Only first;
+// a test payment in Bold's window (test keys) showed no violations in our page.
+// Bold's window is an iframe from checkout.bold.co with its own policy, so what
+// it loads inside (reCAPTCHA, Clarity, Segment, its APIs, an eval() it blocks
+// itself) is governed by Bold, not by this list. 'unsafe-inline'
+// in script-src is needed because Next.js injects inline bootstrap scripts and
+// the JSON-LD tag; removing it requires nonces through the proxy (see
+// node_modules/next/dist/docs/01-app/02-guides/content-security-policy.md).
+// Fonts come from next/font (self hosted) and images go through next/image
+// (/_next/image), so both are 'self'. If a new third-party script is added,
+// add its origin here or it will be blocked.
 const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} ${BOLD} ${TURNSTILE}`,
@@ -57,7 +58,7 @@ const securityHeaders = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
-  { key: "Content-Security-Policy-Report-Only", value: csp },
+  { key: "Content-Security-Policy", value: csp },
 ];
 
 const nextConfig: NextConfig = {
