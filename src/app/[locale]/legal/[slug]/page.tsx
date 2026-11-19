@@ -10,7 +10,7 @@ import LegalMarkdown from "@/components/legal/LegalMarkdown";
 import { alternatesFor } from "@/lib/seo";
 import BonusRain from "@/components/legal/BonusRain";
 
-// Club Crooki digital card (same link as the QR in /public/reward.png).
+// Club Crooki digital card (same link as the QR in /public/reward.webp).
 const CLUB_SIGNUP_URL = "https://take.cards/jFMFg";
 
 export function generateStaticParams() {
@@ -69,7 +69,7 @@ export default async function LegalDocPage({
           {slug === "terminos-club-crooki" && (
             <div className="mb-10 flex flex-col items-center gap-4">
               <Image
-                src="/reward.png"
+                src="/reward.webp"
                 alt={t("club_image_alt")}
                 width={1122}
                 height={1402}

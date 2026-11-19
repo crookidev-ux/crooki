@@ -38,6 +38,32 @@ const IMAGE_EXT_BY_TYPE: Record<string, string> = {
   "image/png": "png",
 };
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_IMAGE_WIDTH = 1200;
+
+// The site serves photos as stored (no Vercel optimizer, see next.config.ts),
+// so every upload is shrunk here to <=1200 px webp (JPEG on browsers that
+// can't encode webp). Returns null if the browser can't read the image.
+async function compressImage(file: File): Promise<File | null> {
+  try {
+    const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+    const scale = Math.min(1, MAX_IMAGE_WIDTH / bitmap.width);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    const encode = (type: string) =>
+      new Promise<Blob | null>((r) => canvas.toBlob(r, type, 0.8));
+    let blob = await encode("image/webp");
+    // Older Safari silently returns PNG for webp: fall back to JPEG.
+    if (!blob || blob.type !== "image/webp") blob = await encode("image/jpeg");
+    if (!blob) return null;
+    const ext = IMAGE_EXT_BY_TYPE[blob.type];
+    return new File([blob], file.name.replace(/\.[^.]+$/, "") + "." + ext, { type: blob.type });
+  } catch {
+    return null;
+  }
+}
 
 interface ComboPickerEntry {
   selected: boolean;
@@ -237,22 +263,28 @@ export default function ProductFormClient({
   const setSalsaExtra = (id: string, value: string) =>
     setSalsaPicker((p) => ({ ...p, [id]: { ...(p[id] ?? { selected: true, extra: "0" }), extra: value } }));
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const picked = Array.from(e.target.files ?? []);
     // Reset so picking the same (rejected) file again still fires onChange.
     e.target.value = "";
-    const files = picked.filter((f) => {
+    const files: File[] = [];
+    for (const f of picked) {
       if (!IMAGE_EXT_BY_TYPE[f.type]) {
         toast.error(`«${f.name}» no es JPG, PNG ni WEBP. Conviértela e inténtalo de nuevo.`);
-        return false;
+        continue;
       }
-      if (f.size > MAX_IMAGE_BYTES) {
-        const mb = (f.size / (1024 * 1024)).toFixed(1);
+      const small = await compressImage(f);
+      if (!small) {
+        toast.error(`No pudimos leer «${f.name}». Prueba con otra foto.`);
+        continue;
+      }
+      if (small.size > MAX_IMAGE_BYTES) {
+        const mb = (small.size / (1024 * 1024)).toFixed(1);
         toast.error(`«${f.name}» pesa ${mb} MB. El máximo es 5 MB.`);
-        return false;
+        continue;
       }
-      return true;
-    });
+      files.push(small);
+    }
     if (!files.length) return;
 
     const newPreviews = files.map((f) => URL.createObjectURL(f));

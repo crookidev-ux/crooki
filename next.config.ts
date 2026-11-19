@@ -63,15 +63,11 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "*.supabase.co",
-        pathname: "/storage/v1/object/public/**",
-      },
-    ],
-  },
+  // Vercel's image optimizer is paid past the Hobby quota (it answered 402 on
+  // 2026-11-19 and the menu lost its photos). Images are served as stored, so
+  // they must be web-sized already: product photos are compressed to webp in
+  // the admin before upload (scripts/compress-product-images.mjs did the old ones).
+  images: { unoptimized: true },
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },

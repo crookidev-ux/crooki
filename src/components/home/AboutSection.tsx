@@ -19,10 +19,10 @@ export default async function AboutSection({ locale }: { locale: string }) {
           <div className="relative">
             <div className="rounded-3xl overflow-hidden shadow-2xl">
               <Image
-                src="/images/pistachio-dream.jpg"
+                src="/images/pistachio-dream.webp"
                 alt={t("image_alt")}
-                width={3842}
-                height={5763}
+                width={1200}
+                height={1800}
                 sizes="(min-width: 1024px) 560px, 100vw"
                 className="w-full h-96 lg:h-[500px] object-cover"
               />
