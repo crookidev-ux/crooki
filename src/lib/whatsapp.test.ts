@@ -1,10 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  buildBusinessQuoteMessage,
+  buildBusinessQuoteUrl,
   buildWhatsAppMessage,
   buildWhatsAppOrderUrl,
   customerNotes,
   WHATSAPP_NUMBER,
+  type BusinessQuote,
   type WhatsAppOrder,
 } from "./whatsapp.ts";
 import { AMOUNT_MISMATCH_NOTE, DOUBLE_CHARGE_NOTE } from "./payments.confirm.ts";
@@ -109,4 +112,59 @@ test("a scheduled order tells the shop when to prepare it", () => {
   const l = lines({ ...delivery, scheduled_for: "2026-11-03T16:00:00.000Z" });
   assert.ok(l.includes("🕚 *PROGRAMADO:* martes, 3 de noviembre, desde las 11 a. m."));
   assert.ok(!lines(delivery).some((x) => x.includes("PROGRAMADO")));
+});
+
+// --- Business quotes (/empresas) ---
+
+const quote: BusinessQuote = {
+  company: "Acme SAS",
+  contact: "Ana Pérez",
+  occasion: "Regalo de fin de año",
+  product: "Holiday gift",
+  quantity: 30,
+  date: "2026-12-15",
+  city: "Bocagrande",
+  budget: "50.000",
+  logo: true,
+  comments: "Sin nueces",
+};
+
+test("business quote message carries every field, in Spanish", () => {
+  assert.equal(
+    buildBusinessQuoteMessage(quote),
+    [
+      "Hola Crooki, quiero cotizar para mi empresa.",
+      "Empresa: Acme SAS",
+      "Contacto: Ana Pérez",
+      "Ocasión: Regalo de fin de año",
+      "Producto: Holiday gift",
+      "Cantidad: 30",
+      "Fecha de entrega: 2026-12-15",
+      "Ciudad o lugar: Bocagrande",
+      "Presupuesto por unidad: 50.000",
+      "Quiero preguntar por personalización con nuestro logo.",
+      "Comentarios: Sin nueces",
+      "(Origen: web /empresas)",
+    ].join("\n"),
+  );
+});
+
+test("business quote omits empty optional lines", () => {
+  const msg = buildBusinessQuoteMessage({
+    ...quote, city: undefined, budget: "  ", logo: false, comments: "",
+  });
+  for (const s of ["Ciudad", "Presupuesto", "logo", "Comentarios"]) assert.ok(!msg.includes(s), s);
+});
+
+test("business quote trims long fields (comments 500, others 120)", () => {
+  const long = buildBusinessQuoteMessage({ ...quote, company: "x".repeat(200), comments: "y".repeat(600) });
+  assert.ok(long.includes(`Empresa: ${"x".repeat(120)}\n`));
+  assert.ok(long.includes(`Comentarios: ${"y".repeat(500)}\n`));
+});
+
+test("business quote URL round-trips &, #, newlines and emoji", () => {
+  const q = { ...quote, comments: "A & B #1\nsegunda línea 🍪" };
+  const url = buildBusinessQuoteUrl(q);
+  assert.ok(url.startsWith(`https://wa.me/${WHATSAPP_NUMBER}?text=`));
+  assert.equal(decodeURIComponent(url.split("?text=")[1]), buildBusinessQuoteMessage(q));
 });

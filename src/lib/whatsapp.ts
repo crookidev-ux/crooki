@@ -118,3 +118,46 @@ export function buildWhatsAppMessage(order: WhatsAppOrder): string {
 export function buildWhatsAppOrderUrl(order: WhatsAppOrder): string {
   return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(buildWhatsAppMessage(order))}`;
 }
+
+export interface BusinessQuote {
+  company: string;
+  contact: string;
+  occasion: string;
+  product: string;
+  quantity: number;
+  date: string; // YYYY-MM-DD
+  city?: string;
+  budget?: string;
+  logo: boolean;
+  comments?: string;
+}
+
+// Caps keep the wa.me URL well under the length browsers and WhatsApp accept.
+const clip = (s: string | undefined, max = 120) => (s ?? "").trim().slice(0, max);
+
+/** Quote request from /empresas, in Spanish because the shop reads it. */
+export function buildBusinessQuoteMessage(q: BusinessQuote): string {
+  const city = clip(q.city);
+  const budget = clip(q.budget);
+  const comments = clip(q.comments, 500);
+  return [
+    "Hola Crooki, quiero cotizar para mi empresa.",
+    `Empresa: ${clip(q.company)}`,
+    `Contacto: ${clip(q.contact)}`,
+    `Ocasión: ${clip(q.occasion)}`,
+    `Producto: ${clip(q.product)}`,
+    `Cantidad: ${q.quantity}`,
+    `Fecha de entrega: ${clip(q.date)}`,
+    city ? `Ciudad o lugar: ${city}` : null,
+    budget ? `Presupuesto por unidad: ${budget}` : null,
+    q.logo ? "Quiero preguntar por personalización con nuestro logo." : null,
+    comments ? `Comentarios: ${comments}` : null,
+    "(Origen: web /empresas)",
+  ]
+    .filter((line) => line !== null)
+    .join("\n");
+}
+
+export function buildBusinessQuoteUrl(q: BusinessQuote): string {
+  return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(buildBusinessQuoteMessage(q))}`;
+}

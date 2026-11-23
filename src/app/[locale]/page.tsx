@@ -5,6 +5,7 @@ import Hero from "@/components/home/Hero";
 import FeaturedProducts from "@/components/home/FeaturedProducts";
 import AboutSection from "@/components/home/AboutSection";
 import SocialSection from "@/components/home/SocialSection";
+import BusinessSection from "@/components/home/BusinessSection";
 import type { Product } from "@/lib/types";
 import { mockProducts } from "@/lib/mock-products";
 import { parseActiveSeason, type SeasonId } from "@/lib/seasons";
@@ -80,6 +81,7 @@ export default async function HomePage({
       <Hero locale={locale} season={season} />
       <FeaturedProducts products={products} locale={locale} />
       <AboutSection locale={locale} />
+      <BusinessSection locale={locale} season={season} />
       <SocialSection locale={locale} posts={socialPosts} />
     </>
   );
