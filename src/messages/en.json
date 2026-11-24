@@ -28,7 +28,8 @@
   },
   "featured": {
     "title": "Our flavors",
-    "subtitle": "Each cookie is a masterpiece made with the finest ingredients"
+    "subtitle": "Each cookie is a masterpiece made with the finest ingredients",
+    "see_all": "See full menu"
   },
   "about": {
     "title": "Baked with passion",

@@ -101,7 +101,7 @@ export default function FeaturedProducts({ products, locale }: Props) {
             className="inline-flex items-center gap-2 border-2 font-bold text-lg px-8 py-4 rounded-full transition-all hover:bg-[#8b0031] hover:text-white"
             style={{ borderColor: "#8b0031", color: "#8b0031" }}
           >
-            Ver menú completo →
+            {t("see_all")} →
           </Link>
         </div>
       </div>
