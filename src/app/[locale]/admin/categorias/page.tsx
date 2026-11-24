@@ -21,6 +21,7 @@ export default async function AdminCategoriesPage({
   const rows = (categories as CategoryRow[]) ?? [];
   const menu = rows.filter((c) => c.kind === "menu");
   const merch = rows.filter((c) => c.kind === "merch");
+  const navidad = rows.filter((c) => c.kind === "navidad");
 
   const { data: products } = await supabase
     .from("products")
@@ -90,6 +91,7 @@ export default async function AdminCategoriesPage({
 
       {renderGroup("Menú", menu)}
       {renderGroup("Merch", merch)}
+      {renderGroup("Navidad", navidad)}
     </div>
   );
 }

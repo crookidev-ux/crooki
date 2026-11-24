@@ -5,9 +5,18 @@ import { useMemo, useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
-import { Loader2, Upload, X, Trash2, ArrowLeft } from "lucide-react";
+import { Loader2, Upload, X, Trash2, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
-import type { CategoryKind, CategoryRow, Product } from "@/lib/types";
+import {
+  CATEGORY_KINDS,
+  KIND_LABEL_ES,
+  type CategoryKind,
+  type CategoryRow,
+  type Product,
+  type ProductImage,
+} from "@/lib/types";
+import { isValidSlug, slugify } from "@/lib/slug";
+import { MAX_PRODUCT_IMAGES, fitPhotos, moveItem } from "@/lib/product-photos";
 import {
   PROMO_TAGS,
   bogotaLocalToIso,
@@ -72,6 +81,12 @@ async function compressImage(file: File): Promise<File | null> {
     return null;
   }
 }
+
+// One photo in the form, in display order: already stored, or picked and not
+// uploaded yet (uploaded on save, in this order).
+type Photo =
+  | { key: string; existing: ProductImage; preview: string }
+  | { key: string; file: File; preview: string };
 
 interface ComboPickerEntry {
   selected: boolean;
@@ -147,9 +162,11 @@ export default function ProductFormClient({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
-  const [existingImages, setExistingImages] = useState(product?.product_images ?? []);
-  const [newImageFiles, setNewImageFiles] = useState<File[]>([]);
-  const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
+  const [photos, setPhotos] = useState<Photo[]>(() =>
+    [...(product?.product_images ?? [])]
+      .sort((a, b) => a.display_order - b.display_order)
+      .map((img) => ({ key: img.id, existing: img, preview: img.url })),
+  );
 
   // Determine kind from the product's category (edit) or the URL hint (create).
   const productKind: CategoryKind = useMemo(() => {
@@ -181,6 +198,13 @@ export default function ProductFormClient({
     sale_ends_local: isoToBogotaLocal(product?.sale_ends_at),
     promo_tag: (product?.promo_tag ?? "") as PromoTag | "",
   });
+
+  // Christmas products have their own page: /navidad/<slug>. The slug follows
+  // the Spanish name until the admin edits it (or the product already has one).
+  const isNavidad = kind === "navidad";
+  const [slugInput, setSlugInput] = useState(product?.slug ?? "");
+  const [slugTouched, setSlugTouched] = useState(!!product?.slug);
+  const slug = slugTouched ? slugInput : slugify(form.name_es);
 
   const isCombo = form.category === "combos";
   const isBox = form.category === "cajas";
@@ -299,28 +323,54 @@ export default function ProductFormClient({
     }
     if (!files.length) return;
 
-    const newPreviews = files.map((f) => URL.createObjectURL(f));
-    setNewImageFiles((prev) => [...prev, ...files]);
-    setNewImagePreviews((prev) => [...prev, ...newPreviews]);
+    const { accepted, dropped } = fitPhotos(photos.length, files);
+    if (dropped > 0) toast.error(t("photos_dropped", { max: MAX_PRODUCT_IMAGES, dropped }));
+    setPhotos((prev) => [
+      ...prev,
+      ...accepted.map((file, i) => ({
+        key: `new-${Date.now()}-${i}`,
+        file,
+        preview: URL.createObjectURL(file),
+      })),
+    ]);
   };
 
-  const removeNewImage = (index: number) => {
-    setNewImageFiles((prev) => prev.filter((_, i) => i !== index));
-    setNewImagePreviews((prev) => prev.filter((_, i) => i !== index));
+  const movePhoto = (index: number, to: number) => setPhotos((prev) => moveItem(prev, index, to));
+
+  const removePhoto = async (index: number) => {
+    const photo = photos[index];
+    if (!photo) return;
+    if ("existing" in photo) {
+      // Stored photos are deleted right away (as before); new ones just drop.
+      const supabase = createClient();
+      const { error } = await supabase.from("product_images").delete().eq("id", photo.existing.id);
+      if (error) {
+        toast.error(`No se pudo quitar la foto: ${error.message}`);
+        return;
+      }
+    } else {
+      URL.revokeObjectURL(photo.preview);
+    }
+    setPhotos((prev) => prev.filter((p) => p.key !== photo.key));
   };
 
-  const removeExistingImage = async (imageId: string) => {
+  // Uploads the new photos and saves every photo's position (index = display_order).
+  const savePhotos = async (productId: string) => {
     const supabase = createClient();
-    await supabase.from("product_images").delete().eq("id", imageId);
-    setExistingImages((prev) => prev.filter((img) => img.id !== imageId));
-  };
 
-  const uploadImages = async (productId: string) => {
-    if (!newImageFiles.length) return;
-    const supabase = createClient();
-
-    for (let i = 0; i < newImageFiles.length; i++) {
-      const file = newImageFiles[i];
+    for (let i = 0; i < photos.length; i++) {
+      const photo = photos[i];
+      if ("existing" in photo) {
+        if (photo.existing.display_order !== i) {
+          const { error } = await supabase
+            .from("product_images")
+            .update({ display_order: i })
+            .eq("id", photo.existing.id);
+          if (error) toast.error(`No se pudo guardar el orden de las fotos: ${error.message}`);
+        }
+        continue;
+      }
+      const file = photo.file;
       const ext = IMAGE_EXT_BY_TYPE[file.type];
       if (!ext || file.size > MAX_IMAGE_BYTES) {
         toast.error(`«${file.name}» no se subió: solo JPG, PNG o WEBP de hasta 5 MB.`);
@@ -341,11 +391,20 @@ export default function ProductFormClient({
         .from("product-images")
         .getPublicUrl(data.path);
 
-      await supabase.from("product_images").insert({
+      const { error: rowError } = await supabase.from("product_images").insert({
         product_id: productId,
         url: publicUrl,
-        display_order: existingImages.length + i,
+        display_order: i,
       });
+      if (rowError) {
+        // The 5-photo trigger (or RLS) refused it: don't leave the file orphaned.
+        await supabase.storage.from("product-images").remove([data.path]);
+        toast.error(
+          rowError.hint === "max_product_images"
+            ? t("photos_limit_db", { max: MAX_PRODUCT_IMAGES })
+            : `Error guardando la foto: ${rowError.message}`,
+        );
+      }
     }
   };
 
@@ -366,12 +425,19 @@ export default function ProductFormClient({
       toast.error(t("sale_error_date"));
       return;
     }
-    setLoading(true);
-
     if (!form.category) {
       toast.error("La categoría es requerida");
       return;
     }
+    if (isNavidad && !slug) {
+      toast.error(t("slug_required"));
+      return;
+    }
+    if (isNavidad && !isValidSlug(slug)) {
+      toast.error(t("slug_error"));
+      return;
+    }
+    setLoading(true);
 
     try {
       const supabase = createClient();
@@ -391,6 +457,9 @@ export default function ProductFormClient({
         // Only meaningful for combos; harmless for other categories.
         includes_salsa: isCombo ? includesSalsa : false,
       };
+      // Only Christmas products carry a slug, so menu/merch saves keep working
+      // on a database without the navidad migration.
+      if (isNavidad) productData.slug = slug;
       if (isBox) {
         const count = parseInt(boxCookieCount, 10);
         productData.box_cookie_count = Number.isFinite(count) && count >= 2 ? count : 2;
@@ -420,7 +489,7 @@ export default function ProductFormClient({
 
       if (productId) {
         setUploadingImages(true);
-        await uploadImages(productId);
+        await savePhotos(productId);
         setUploadingImages(false);
       }
 
@@ -482,7 +551,9 @@ export default function ProductFormClient({
       router.push(`/${locale}/admin`);
     } catch (err: unknown) {
       console.error(err);
-      toast.error("Error al guardar el producto");
+      // 23505 = unique violation: on a Christmas product, the slug is taken.
+      const code = (err as { code?: string } | null)?.code;
+      toast.error(code === "23505" && isNavidad ? t("slug_taken") : "Error al guardar el producto");
     } finally {
       setLoading(false);
       setUploadingImages(false);
@@ -591,7 +662,7 @@ export default function ProductFormClient({
           <div>
             <label className="block text-sm font-semibold mb-1.5 text-gray-700">Tipo</label>
             <div className="flex gap-2">
-              {(["menu", "merch"] as const).map((k) => (
+              {CATEGORY_KINDS.map((k) => (
                 <button
                   key={k}
                   type="button"
@@ -607,7 +678,7 @@ export default function ProductFormClient({
                     borderColor: kind === k ? "#8b0031" : "#e5e7eb",
                   }}
                 >
-                  {k === "menu" ? "Menú" : "Merch"}
+                  {KIND_LABEL_ES[k]}
                 </button>
               ))}
             </div>
@@ -634,6 +705,43 @@ export default function ProductFormClient({
             )}
           </div>
         </div>
+
+        {/* Christmas product page address */}
+        {isNavidad && (
+          <div>
+            <label htmlFor="slug" className="block text-sm font-semibold mb-1.5 text-gray-700">
+              {t("slug")} *
+            </label>
+            <input
+              id="slug"
+              type="text"
+              value={slug}
+              onChange={(e) => {
+                setSlugTouched(true);
+                setSlugInput(e.target.value.toLowerCase());
+              }}
+              onBlur={() => setSlugInput(slugify(slug))}
+              maxLength={80}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              aria-invalid={slug !== "" && !isValidSlug(slug)}
+              aria-describedby="slug_help"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 transition-all"
+              placeholder="caja-navidena"
+            />
+            <p id="slug_help" className="text-xs text-gray-500 mt-1">
+              {slug !== "" && !isValidSlug(slug) ? (
+                <span className="text-red-600">{t("slug_error")}</span>
+              ) : (
+                <>
+                  {t("slug_help")}{" "}
+                  {slug && t("slug_preview", { url: `crookibakebar.com/navidad/${slug}` })}
+                </>
+              )}
+            </p>
+          </div>
+        )}
 
         {/* Price + Order + Available */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -766,65 +874,92 @@ export default function ProductFormClient({
 
         {/* Images */}
         <div>
-          <label className="block text-sm font-semibold mb-3 text-gray-700">{t("product_images")}</label>
-
-          {/* Existing images */}
-          {existingImages.length > 0 && (
-            <div className="flex flex-wrap gap-3 mb-4">
-              {existingImages.map((img) => (
-                <div key={img.id} className="relative group">
-                  <Image
-                    src={img.url}
-                    alt=""
-                    width={96}
-                    height={96}
-                    className="w-24 h-24 rounded-xl object-cover border border-gray-200"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeExistingImage(img.id)}
-                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* New image previews */}
-          {newImagePreviews.length > 0 && (
-            <div className="flex flex-wrap gap-3 mb-4">
-              {newImagePreviews.map((url, i) => (
-                <div key={i} className="relative group">
-                  {/* Local blob: preview of a file not uploaded yet; next/image can't load it */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={url}
-                    alt=""
-                    className="w-24 h-24 rounded-xl object-cover border-2 border-blue-300"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeNewImage(i)}
-                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Upload zone */}
-          <div
-            className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center cursor-pointer hover:border-gray-400 transition-colors"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <Upload className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-            <p className="text-sm text-gray-500">{t("drag_drop")}</p>
-            <p className="text-xs text-gray-400 mt-1">JPG, PNG, WEBP · 5 MB máx.</p>
+          <div className="flex items-baseline justify-between gap-3 mb-1">
+            <label className="block text-sm font-semibold text-gray-700">{t("product_images")}</label>
+            <span className="text-xs font-semibold text-gray-500" aria-live="polite">
+              {t("photos_count", { count: photos.length, max: MAX_PRODUCT_IMAGES })}
+            </span>
           </div>
+          <p className="text-xs text-gray-500 mb-3">{t("photos_order_help")}</p>
+
+          {/* Every photo in display order; the first is the cover */}
+          {photos.length > 0 && (
+            <ol className="flex flex-wrap gap-3 mb-4">
+              {photos.map((photo, i) => (
+                <li key={photo.key} className="relative">
+                  {"existing" in photo ? (
+                    <Image
+                      src={photo.preview}
+                      alt=""
+                      width={112}
+                      height={112}
+                      className="w-28 h-28 rounded-xl object-cover border border-gray-200"
+                    />
+                  ) : (
+                    <>
+                      {/* Local blob: preview of a file not uploaded yet; next/image can't load it */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={photo.preview}
+                        alt=""
+                        className="w-28 h-28 rounded-xl object-cover border-2 border-blue-300"
+                      />
+                    </>
+                  )}
+                  {i === 0 && (
+                    <span className="absolute left-1.5 top-1.5 rounded-full bg-[#8b0031] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                      {t("photo_cover")}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removePhoto(i)}
+                    aria-label={`${t("photo_remove")} ${i + 1}`}
+                    className="absolute -top-2 -right-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center shadow"
+                  >
+                    <X aria-hidden="true" className="w-3.5 h-3.5" />
+                  </button>
+                  <div className="mt-1.5 flex justify-between">
+                    <button
+                      type="button"
+                      onClick={() => movePhoto(i, i - 1)}
+                      disabled={i === 0}
+                      aria-label={`${t("photo_left")} (${i + 1})`}
+                      className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-30"
+                    >
+                      <ChevronLeft aria-hidden="true" className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => movePhoto(i, i + 1)}
+                      disabled={i === photos.length - 1}
+                      aria-label={`${t("photo_right")} (${i + 1})`}
+                      className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-30"
+                    >
+                      <ChevronRight aria-hidden="true" className="w-4 h-4" />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          )}
+
+          {/* Upload zone (hidden once the product has its 5 photos) */}
+          {photos.length < MAX_PRODUCT_IMAGES ? (
+            <button
+              type="button"
+              className="w-full border-2 border-dashed border-gray-200 rounded-xl p-8 text-center cursor-pointer hover:border-gray-400 transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload aria-hidden="true" className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+              <span className="block text-sm text-gray-500">{t("drag_drop")}</span>
+              <span className="block text-xs text-gray-400 mt-1">JPG, PNG, WEBP · 5 MB máx.</span>
+            </button>
+          ) : (
+            <p className="rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-600">
+              {t("photos_full", { max: MAX_PRODUCT_IMAGES })}
+            </p>
+          )}
           <input
             ref={fileInputRef}
             type="file"

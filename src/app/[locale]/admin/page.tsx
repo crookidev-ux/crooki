@@ -7,7 +7,7 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { isBoldConfigured } from "@/lib/bold";
 import { reconcileRecentBoldOrders } from "@/lib/payments.reconcile";
 import { createServiceClient } from "@/lib/supabase/service";
-import type { CategoryRow, Product } from "@/lib/types";
+import { CATEGORY_KINDS, KIND_LABEL_ES, parseKind, type CategoryRow, type Product } from "@/lib/types";
 import { effectivePrice, isSaleActive, visibleTag } from "@/lib/promo";
 import {
   countsAsPending,
@@ -44,7 +44,7 @@ export default async function AdminDashboardPage({
 }) {
   const { locale } = await params;
   const { kind: kindParam } = await searchParams;
-  const kind = kindParam === "merch" ? "merch" : "menu";
+  const kind = parseKind(kindParam);
 
   const t = await getTranslations({ locale, namespace: "admin" });
   const tPromo = await getTranslations({ locale, namespace: "promo" });
@@ -165,7 +165,7 @@ export default async function AdminDashboardPage({
       </div>
 
       <div className="flex gap-2 mb-6">
-        {(["menu", "merch"] as const).map((k) => {
+        {CATEGORY_KINDS.map((k) => {
           const count = allProducts.filter((p) =>
             allCategories.some((c) => c.slug === p.category && c.kind === k),
           ).length;
@@ -180,7 +180,7 @@ export default async function AdminDashboardPage({
                 borderColor: kind === k ? "#8b0031" : "#e5e7eb",
               }}
             >
-              {k === "menu" ? "Menú" : "Merch"} · {count}
+              {KIND_LABEL_ES[k]} · {count}
             </Link>
           );
         })}
@@ -250,6 +250,15 @@ export default async function AdminDashboardPage({
                             </p>
                           )}
                         </div>
+                        {kind === "navidad" && p.slug && (
+                          <Link
+                            href={`/${locale}/navidad/${p.slug}`}
+                            target="_blank"
+                            className="text-sm font-semibold text-gray-500 hover:text-[#8b0031] hover:underline"
+                          >
+                            Ver página
+                          </Link>
+                        )}
                         <Link
                           href={`/${locale}/admin/productos/${p.id}/editar`}
                           className="text-sm font-semibold px-4 py-1.5 border rounded-full hover:bg-gray-100 transition-colors"

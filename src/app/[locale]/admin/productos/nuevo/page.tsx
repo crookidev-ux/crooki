@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/lib/admin-auth";
 import ProductFormClient from "@/components/admin/ProductFormClient";
-import type { CategoryRow } from "@/lib/types";
+import { parseKind, type CategoryRow } from "@/lib/types";
 
 export default async function NewProductPage({
   params,
@@ -32,7 +32,7 @@ export default async function NewProductPage({
       locale={locale}
       mode="create"
       categories={(categories as CategoryRow[]) ?? []}
-      initialKind={kind === "merch" ? "merch" : "menu"}
+      initialKind={parseKind(kind)}
       initialCategory={category}
       allGalletas={galletas ?? []}
       allSalsas={salsas ?? []}

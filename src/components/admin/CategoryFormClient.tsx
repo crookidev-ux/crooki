@@ -5,22 +5,14 @@ import { useRouter } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Loader2, Trash2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
-import type { CategoryKind, CategoryRow } from "@/lib/types";
+import { CATEGORY_KINDS, KIND_LABEL_ES, type CategoryKind, type CategoryRow } from "@/lib/types";
 import { NEARBY_MAX_KM, type DeliveryRule } from "@/lib/delivery-zones";
+import { slugify } from "@/lib/slug";
 
 interface Props {
   locale: string;
   mode: "create" | "edit";
   category?: CategoryRow;
-}
-
-function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 }
 
 export default function CategoryFormClient({ locale, mode, category }: Props) {
@@ -125,7 +117,7 @@ export default function CategoryFormClient({ locale, mode, category }: Props) {
         <div>
           <label className="block text-sm font-semibold mb-1.5 text-gray-700">Tipo</label>
           <div className="flex gap-2">
-            {(["menu", "merch"] as const).map((k) => (
+            {CATEGORY_KINDS.map((k) => (
               <button
                 key={k}
                 type="button"
@@ -138,7 +130,7 @@ export default function CategoryFormClient({ locale, mode, category }: Props) {
                   borderColor: form.kind === k ? "#8b0031" : "#e5e7eb",
                 }}
               >
-                {k === "menu" ? "Menú" : "Merch"}
+                {KIND_LABEL_ES[k]}
               </button>
             ))}
           </div>
@@ -223,8 +215,9 @@ export default function CategoryFormClient({ locale, mode, category }: Props) {
             </span>
           </label>
           <p className="text-xs text-gray-400 mt-1">
-            Las categorías ocultas no aparecen en el menú ni en merch, pero siguen
-            siendo editables en el panel.
+            Las categorías ocultas no aparecen en el menú, en merch ni en Navidad, pero
+            siguen siendo editables en el panel. Una categoría de Navidad visible
+            muestra el enlace «Navidad» en el menú del sitio.
           </p>
         </div>
 

@@ -6,6 +6,20 @@ export type Locale = "es" | "en";
 // "navidad" = Christmas catalog with a page per product (/navidad/[slug]).
 export type CategoryKind = "menu" | "merch" | "navidad";
 
+export const CATEGORY_KINDS: readonly CategoryKind[] = ["menu", "merch", "navidad"];
+
+/** Admin labels (the admin panel is Spanish only). */
+export const KIND_LABEL_ES: Record<CategoryKind, string> = {
+  menu: "Menú",
+  merch: "Merch",
+  navidad: "Navidad",
+};
+
+/** `?kind=` from an admin URL; anything unknown is the menu. */
+export function parseKind(value: unknown): CategoryKind {
+  return CATEGORY_KINDS.includes(value as CategoryKind) ? (value as CategoryKind) : "menu";
+}
+
 // Kept as string so admin-created categories work without a TS change.
 // The seeded menu order below only controls the legacy mock fallback.
 export type Category = string;
