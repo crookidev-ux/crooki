@@ -324,8 +324,8 @@
     "merch_description": "Exclusive Crooki caps, tees and tote bags. Take a little piece of Crooki and Cartagena with you.",
     "legal_description": "Crooki Bake Bar policies and terms: data processing, cookies and Club Crooki.",
     "og_alt": "Crooki Bake Bar · Artisan cookies in Cartagena",
-    "navidad_title": "Christmas",
-    "navidad_description": "Christmas boxes and gifts from Crooki Bake Bar, baked in Cartagena. Pick yours, add it to your order and get it delivered or pick it up in the Historic Center."
+    "navidad_title": "Christmas gifts and boxes",
+    "navidad_description": "Christmas boxes and gifts baked fresh in Cartagena by Crooki Bake Bar. Pick yours, add it to your order and get it delivered or pick it up in the Historic Center."
   },
   "lookup": {
     "title": "My order",
@@ -390,7 +390,7 @@
     "sold_out": "Sold out",
     "sold_out_text": "This product is sold out for now. Message us on WhatsApp and we'll let you know when it's back.",
     "ask_in_store": "Ask in store",
-    "delivery_any": "Delivery in Cartagena or pick it up at the shop",
+    "delivery_any": "Delivery in Cartagena or pick up at the shop",
     "description": "Description",
     "more": "More Christmas gifts"
   }
