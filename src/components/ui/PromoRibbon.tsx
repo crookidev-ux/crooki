@@ -26,7 +26,7 @@ export default function PromoRibbon({ tag, className = "" }: { tag: PromoTag; cl
 
   return (
     <span
-      className={`absolute left-0 top-4 z-10 inline-flex items-center gap-1.5 overflow-hidden rounded-r-full py-2 pl-3.5 pr-4 text-[11px] font-black uppercase leading-none tracking-[0.16em] ${className}`}
+      className={`absolute left-0 top-4 z-10 inline-flex items-center gap-1.5 overflow-hidden rounded-r-full py-2 pl-3.5 pr-4 text-[11px] sm:text-xs font-black uppercase leading-none tracking-[0.16em] ${className}`}
       style={{
         backgroundColor: s.band,
         color: s.text,
