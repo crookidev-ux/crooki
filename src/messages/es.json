@@ -241,7 +241,20 @@
     "drag_drop": "Arrastra imágenes aquí o haz clic para seleccionar",
     "no_products": "No hay productos aún",
     "no_orders": "No hay pedidos aún",
-    "scheduled_badge": "Programado · {day}"
+    "scheduled_badge": "Programado · {day}",
+    "promo_section": "Promoción",
+    "product_sale_price": "Precio de oferta",
+    "product_sale_ends": "La oferta termina (hora de Colombia)",
+    "product_promo_tag": "Etiqueta",
+    "promo_tag_none": "Ninguna",
+    "sale_help": "Déjalo vacío para no tener oferta. Debe ser menor que el precio normal; el precio normal se muestra tachado.",
+    "sale_ends_help": "Opcional. Al llegar esta hora se vuelve solo al precio normal.",
+    "sale_status_active": "Oferta activa: se cobra el precio de oferta.",
+    "sale_status_ended": "La oferta ya terminó: se cobra el precio normal.",
+    "sale_tag_hidden": "Esta etiqueta solo se muestra mientras la oferta esté activa.",
+    "sale_error_invalid": "El precio de oferta debe ser mayor que 0 y menor que el precio normal",
+    "sale_error_date": "La fecha de fin de la oferta no es válida",
+    "list_on_sale": "En oferta"
   },
   "contact": {
     "whatsapp": "Chatea con nosotros por WhatsApp",

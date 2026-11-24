@@ -8,6 +8,14 @@ import { useTranslations } from "next-intl";
 import { Loader2, Upload, X, Trash2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import type { CategoryKind, CategoryRow, Product } from "@/lib/types";
+import {
+  PROMO_TAGS,
+  bogotaLocalToIso,
+  isSaleActive,
+  isoToBogotaLocal,
+  visibleTag,
+  type PromoTag,
+} from "@/lib/promo";
 
 interface ReferenceProduct {
   id: string;
@@ -134,6 +142,7 @@ export default function ProductFormClient({
   allSalsas = [],
 }: Props) {
   const t = useTranslations("admin");
+  const tPromo = useTranslations("promo");
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
@@ -168,6 +177,9 @@ export default function ProductFormClient({
       "",
     available: product?.available ?? true,
     display_order: product?.display_order?.toString() ?? "0",
+    sale_price: product?.sale_price != null ? String(product.sale_price) : "",
+    sale_ends_local: isoToBogotaLocal(product?.sale_ends_at),
+    promo_tag: (product?.promo_tag ?? "") as PromoTag | "",
   });
 
   const isCombo = form.category === "combos";
@@ -343,6 +355,17 @@ export default function ProductFormClient({
       toast.error("El nombre en español es requerido");
       return;
     }
+    const price = parseFloat(form.price) || 0;
+    const salePrice = form.sale_price.trim() === "" ? null : Number(form.sale_price);
+    if (salePrice !== null && !(Number.isFinite(salePrice) && salePrice > 0 && salePrice < price)) {
+      toast.error(t("sale_error_invalid"));
+      return;
+    }
+    const saleEndsAt = bogotaLocalToIso(form.sale_ends_local);
+    if (form.sale_ends_local && !saleEndsAt) {
+      toast.error(t("sale_error_date"));
+      return;
+    }
     setLoading(true);
 
     if (!form.category) {
@@ -357,7 +380,11 @@ export default function ProductFormClient({
         name_en: form.name_en,
         description_es: form.description_es,
         description_en: form.description_en,
-        price: parseFloat(form.price) || 0,
+        price,
+        // The database re-checks 0 < sale_price < price (products_sale_price_check).
+        sale_price: salePrice,
+        sale_ends_at: salePrice === null ? null : saleEndsAt,
+        promo_tag: form.promo_tag || null,
         category: form.category,
         available: form.available,
         display_order: parseInt(form.display_order) || 0,
@@ -659,6 +686,83 @@ export default function ProductFormClient({
             </label>
           </div>
         </div>
+
+        {/* Promotion: sale price, optional end (Bogotá time) and ribbon tag */}
+        <fieldset className="rounded-2xl border border-gray-200 p-4 md:p-5">
+          <legend className="px-2 text-sm font-bold" style={{ color: "#8b0031" }}>
+            {t("promo_section")}
+          </legend>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label htmlFor="sale_price" className="block text-sm font-semibold mb-1.5 text-gray-700">
+                {t("product_sale_price")}
+              </label>
+              <input
+                id="sale_price"
+                type="number"
+                inputMode="decimal"
+                value={form.sale_price}
+                onChange={(e) => setForm({ ...form, sale_price: e.target.value })}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 transition-all"
+                placeholder="—"
+                min="1"
+                step="0.01"
+                aria-describedby="sale_price_help"
+              />
+              <p id="sale_price_help" className="text-xs text-gray-500 mt-1">{t("sale_help")}</p>
+            </div>
+            <div>
+              <label htmlFor="sale_ends" className="block text-sm font-semibold mb-1.5 text-gray-700">
+                {t("product_sale_ends")}
+              </label>
+              <input
+                id="sale_ends"
+                type="datetime-local"
+                value={form.sale_ends_local}
+                onChange={(e) => setForm({ ...form, sale_ends_local: e.target.value })}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 transition-all bg-white"
+                aria-describedby="sale_ends_help"
+              />
+              <p id="sale_ends_help" className="text-xs text-gray-500 mt-1">{t("sale_ends_help")}</p>
+            </div>
+            <div>
+              <label htmlFor="promo_tag" className="block text-sm font-semibold mb-1.5 text-gray-700">
+                {t("product_promo_tag")}
+              </label>
+              <select
+                id="promo_tag"
+                value={form.promo_tag}
+                onChange={(e) => setForm({ ...form, promo_tag: e.target.value as PromoTag | "" })}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 transition-all bg-white"
+              >
+                <option value="">{t("promo_tag_none")}</option>
+                {PROMO_TAGS.map((tag) => (
+                  <option key={tag} value={tag}>
+                    {tPromo(`tags.${tag}`)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          {(() => {
+            const preview = {
+              price: parseFloat(form.price) || 0,
+              sale_price: form.sale_price.trim() === "" ? null : Number(form.sale_price),
+              sale_ends_at: bogotaLocalToIso(form.sale_ends_local),
+              promo_tag: form.promo_tag || null,
+            };
+            const notes: string[] = [];
+            if (preview.sale_price !== null) {
+              notes.push(t(isSaleActive(preview) ? "sale_status_active" : "sale_status_ended"));
+            }
+            if (preview.promo_tag && !visibleTag(preview)) notes.push(t("sale_tag_hidden"));
+            return notes.length > 0 ? (
+              <p className="mt-3 text-sm font-medium text-gray-700" aria-live="polite">
+                {notes.join(" ")}
+              </p>
+            ) : null;
+          })()}
+        </fieldset>
 
         {/* Images */}
         <div>

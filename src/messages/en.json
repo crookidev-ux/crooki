@@ -241,7 +241,20 @@
     "drag_drop": "Drag images here or click to select",
     "no_products": "No products yet",
     "no_orders": "No orders yet",
-    "scheduled_badge": "Scheduled · {day}"
+    "scheduled_badge": "Scheduled · {day}",
+    "promo_section": "Promotion",
+    "product_sale_price": "Sale price",
+    "product_sale_ends": "Sale ends (Colombia time)",
+    "product_promo_tag": "Tag",
+    "promo_tag_none": "None",
+    "sale_help": "Leave empty for no sale. It must be lower than the normal price; the normal price is shown struck through.",
+    "sale_ends_help": "Optional. At this time the price goes back to normal on its own.",
+    "sale_status_active": "Sale active: the sale price is charged.",
+    "sale_status_ended": "The sale has ended: the normal price is charged.",
+    "sale_tag_hidden": "This tag only shows while the sale is active.",
+    "sale_error_invalid": "The sale price must be above 0 and below the normal price",
+    "sale_error_date": "The sale end date is not valid",
+    "list_on_sale": "On sale"
   },
   "contact": {
     "whatsapp": "Chat with us on WhatsApp",

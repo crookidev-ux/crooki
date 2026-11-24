@@ -8,6 +8,7 @@ import { isBoldConfigured } from "@/lib/bold";
 import { reconcileRecentBoldOrders } from "@/lib/payments.reconcile";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { CategoryRow, Product } from "@/lib/types";
+import { effectivePrice, isSaleActive, visibleTag } from "@/lib/promo";
 import {
   countsAsPending,
   isUnpaidBold,
@@ -46,6 +47,7 @@ export default async function AdminDashboardPage({
   const kind = kindParam === "merch" ? "merch" : "menu";
 
   const t = await getTranslations({ locale, namespace: "admin" });
+  const tPromo = await getTranslations({ locale, namespace: "promo" });
   const { supabase } = await requireAdmin(locale);
 
   // A lost Bold webhook must not hide a paid order: re-check recent unpaid
@@ -233,6 +235,20 @@ export default async function AdminDashboardPage({
                             ${p.price.toLocaleString("es-CO")} ·{" "}
                             {p.available ? "Disponible" : "Agotado"}
                           </p>
+                          {(isSaleActive(p) || visibleTag(p)) && (
+                            <p className="flex flex-wrap gap-1.5 mt-1">
+                              {isSaleActive(p) && (
+                                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-[#8b0031] text-white">
+                                  {t("list_on_sale")} ${effectivePrice(p).toLocaleString("es-CO")}
+                                </span>
+                              )}
+                              {visibleTag(p) && (
+                                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-[#0b0b0c] text-[#f3c78b]">
+                                  {tPromo(`tags.${visibleTag(p)!}`)}
+                                </span>
+                              )}
+                            </p>
+                          )}
                         </div>
                         <Link
                           href={`/${locale}/admin/productos/${p.id}/editar`}
