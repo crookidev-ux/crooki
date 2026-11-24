@@ -1,384 +1,274 @@
-import Image from "next/image";
-import Link from "next/link";
-import { getTranslations } from "next-intl/server";
-import { openingDayLabel } from "@/lib/store-hours";
-import { Package, ShoppingBag, Plus, Tag, TriangleAlert } from "lucide-react";
-import { requireAdmin } from "@/lib/admin-auth";
-import { isBoldConfigured } from "@/lib/bold";
-import { reconcileRecentBoldOrders } from "@/lib/payments.reconcile";
-import { createServiceClient } from "@/lib/supabase/service";
-import { CATEGORY_KINDS, KIND_LABEL_ES, parseKind, type CategoryRow, type Product } from "@/lib/types";
-import { effectivePrice, isSaleActive, visibleTag } from "@/lib/promo";
+import { after } from "next/server";
 import {
-  countsAsPending,
-  isUnpaidBold,
+  Banknote,
+  CalendarClock,
+  ChefHat,
+  ChevronRight,
+  Clock,
+  ReceiptText,
+  TriangleAlert,
+} from "lucide-react";
+import { Link } from "@/i18n/navigation";
+import { requireAdmin } from "@/lib/admin-auth";
+import {
+  agoLabel,
+  bogotaDay,
+  FULFILLMENT_LABEL,
   payLabelKey,
-  sortOrdersForAdmin,
+  scheduleLabel,
+  shortOrderId,
   warningLines,
 } from "@/lib/admin-orders";
+import {
+  countTabs,
+  listOrders,
+  listPaymentAlerts,
+  type AdminOrderRow,
+} from "@/lib/admin-orders.server";
+import { isBoldConfigured } from "@/lib/bold";
+import { reconcileRecentBoldOrders } from "@/lib/payments.reconcile";
+import { isSaleActive } from "@/lib/promo";
+import { SEASON_NAMES_ES, parseActiveSeason } from "@/lib/seasons";
+import { createServiceClient } from "@/lib/supabase/service";
+import SeasonIcon from "@/components/seasons/SeasonIcon";
+import { RecheckPaymentsButton } from "@/components/admin/OrderActions";
+import { EmptyState, FulfillmentIcon, PageHeader, PayBadge, money } from "@/components/admin/ui";
 
-type ProductRow = Product & { product_images: { id: string; url: string }[] };
-type OrderRow = {
+type CatalogRow = {
   id: string;
-  customer_name: string;
-  customer_phone: string;
-  total: number;
-  status: string;
-  created_at: string;
-  fulfillment: string | null;
-  delivery_zone: string | null;
-  delivery_fee: number | null;
-  payment_method: string | null;
-  payment_status: string | null;
-  paid_at: string | null;
-  notes: string | null;
-  scheduled_for: string | null;
+  available: boolean;
+  price: number;
+  sale_price: number | null;
+  sale_ends_at: string | null;
+  category: string;
+  product_images: { id: string }[];
 };
 
-export default async function AdminDashboardPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ locale: string }>;
-  searchParams: Promise<{ kind?: string }>;
-}) {
+const dateFmt = new Intl.DateTimeFormat("es-CO", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  timeZone: "America/Bogota",
+});
+
+export default async function AdminHomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  const { kind: kindParam } = await searchParams;
-  const kind = parseKind(kindParam);
-
-  const t = await getTranslations({ locale, namespace: "admin" });
-  const tPromo = await getTranslations({ locale, namespace: "promo" });
   const { supabase } = await requireAdmin(locale);
+  const now = new Date();
 
-  // A lost Bold webhook must not hide a paid order: re-check recent unpaid
-  // ones with Bold before listing (this also sends the late shop email).
-  if (isBoldConfigured()) await reconcileRecentBoldOrders(createServiceClient());
+  // A lost Bold webhook must not hide a paid order. Re-checking with Bold can
+  // take seconds, so it runs after the page is sent; «Actualizar» runs it and
+  // waits (this also sends the late shop email).
+  if (isBoldConfigured()) after(() => reconcileRecentBoldOrders(createServiceClient()));
 
-  const [{ data: categories }, { data: products }, { data: orders }] = await Promise.all([
-    supabase.from("categories").select("*").order("kind").order("display_order"),
-    supabase
-      .from("products")
-      .select("*, product_images(*)")
-      .order("display_order"),
-    supabase
-      .from("orders")
-      .select(
-        "id, customer_name, customer_phone, total, status, created_at, fulfillment, delivery_zone, delivery_fee, payment_method, payment_status, paid_at, notes, scheduled_for",
-      )
-      .order("created_at", { ascending: false })
-      .limit(20),
+  const [counts, queue, today, alerts, products, categories, settings] = await Promise.all([
+    countTabs(supabase, now),
+    listOrders(supabase, { tab: "preparar", pageSize: 6, now }),
+    listOrders(supabase, { tab: "hoy", pageSize: 200, now }),
+    listPaymentAlerts(supabase, now),
+    supabase.from("products").select("id, available, price, sale_price, sale_ends_at, category, product_images(id)"),
+    supabase.from("categories").select("slug, kind"),
+    supabase.from("site_settings").select("active_season").eq("id", 1).maybeSingle(),
   ]);
 
-  const allCategories = (categories as CategoryRow[]) ?? [];
-  const cats = allCategories.filter((c) => c.kind === kind);
-  const allProducts = (products as ProductRow[]) ?? [];
-  const productsOfKind = allProducts.filter((p) =>
-    cats.some((c) => c.slug === p.category),
+  const { start } = bogotaDay(now);
+  const createdToday = today.rows.filter((o) => Date.parse(o.created_at) >= start.getTime());
+  const paidToday = createdToday.filter((o) => o.payment_status === "paid" && o.status !== "cancelled");
+  const paidTotal = paidToday.reduce((s, o) => s + Number(o.total), 0);
+  const byFulfillment = (f: string) => createdToday.filter((o) => o.fulfillment === f).length;
+
+  const alertOrders = alerts.filter((o) => warningLines(o.notes).length > 0);
+
+  const catalog = (products.data as CatalogRow[] | null) ?? [];
+  const navidadSlugs = new Set(
+    ((categories.data as { slug: string; kind: string }[] | null) ?? []).filter((c) => c.kind === "navidad").map((c) => c.slug),
   );
-
-  const byCategory = new Map<string, ProductRow[]>();
-  for (const c of cats) byCategory.set(c.slug, []);
-  for (const p of productsOfKind) {
-    if (byCategory.has(p.category)) byCategory.get(p.category)!.push(p);
-  }
-
-  const statusColors: Record<string, string> = {
-    pending: "bg-yellow-100 text-yellow-800",
-    confirmed: "bg-blue-100 text-blue-800",
-    delivered: "bg-green-100 text-green-800",
-    cancelled: "bg-red-100 text-red-800",
-  };
-  const statusLabels: Record<string, string> = {
-    pending: t("order_pending"),
-    confirmed: t("order_confirmed"),
-    delivered: t("order_delivered"),
-    cancelled: t("order_cancelled"),
-  };
-
-  const ordersList = sortOrdersForAdmin((orders as OrderRow[]) ?? []);
-  const payLabels = {
-    paid: t("pay_paid"),
-    awaiting: t("pay_awaiting"),
-    rejected: t("pay_rejected"),
-    qr: t("pay_qr"),
-  };
-  const payColors = {
-    paid: "bg-green-100 text-green-800",
-    awaiting: "bg-gray-200 text-gray-600",
-    rejected: "bg-red-100 text-red-800",
-    qr: "bg-amber-100 text-amber-800",
-  };
-  const fulfillmentLabels: Record<string, string> = {
-    delivery: t("fulfillment_delivery"),
-    pickup: t("fulfillment_pickup"),
-    dine_in: t("fulfillment_dine_in"),
-  };
+  const catalogStats = [
+    { label: "Productos agotados", badge: "Agotado", tone: "", n: catalog.filter((p) => !p.available).length, href: "/admin/productos?f=agotados" },
+    { label: "Ofertas activas", badge: "Oferta", tone: "wine", n: catalog.filter((p) => isSaleActive(p, now)).length, href: "/admin/productos?f=oferta" },
+    { label: "Productos sin foto", badge: "Sin foto", tone: "bad", n: catalog.filter((p) => !p.product_images?.length).length, href: "/admin/productos?f=sin-foto" },
+    { label: "Productos de Navidad", badge: "Navidad", tone: "info", n: catalog.filter((p) => navidadSlugs.has(p.category)).length, href: "/admin/productos?kind=navidad" },
+  ];
+  const season = parseActiveSeason(settings.data?.active_season);
+  const loadError = queue.error || today.error || products.error;
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-black" style={{ color: "#8b0031" }}>
-          {t("dashboard")}
-        </h1>
-        <div className="flex items-center gap-3">
-          <Link
-            href={`/${locale}/admin/categorias`}
-            className="flex items-center gap-2 text-sm font-bold px-4 py-2.5 rounded-full border transition-colors hover:bg-gray-50"
-            style={{ borderColor: "#8b0031", color: "#8b0031" }}
-          >
-            <Tag className="w-4 h-4" />
-            Categorías
-          </Link>
-          <Link
-            href={`/${locale}/admin/productos/nuevo?kind=${kind}`}
-            className="flex items-center gap-2 text-white font-bold px-5 py-2.5 rounded-full transition-opacity hover:opacity-90 text-sm"
-            style={{ backgroundColor: "#8b0031" }}
-          >
-            <Plus className="w-4 h-4" />
-            {t("new_product")}
-          </Link>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 text-center">
-          <Package className="w-8 h-8 mx-auto mb-2" style={{ color: "#8b0031" }} />
-          <div className="text-3xl font-black">{allProducts.length}</div>
-          <div className="text-gray-500 text-sm">{t("products")}</div>
-        </div>
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 text-center">
-          <Tag className="w-8 h-8 mx-auto mb-2" style={{ color: "#8b0031" }} />
-          <div className="text-3xl font-black">{allCategories.length}</div>
-          <div className="text-gray-500 text-sm">Categorías</div>
-        </div>
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 text-center">
-          <ShoppingBag className="w-8 h-8 mx-auto mb-2" style={{ color: "#8b0031" }} />
-          <div className="text-3xl font-black">{ordersList.length}</div>
-          <div className="text-gray-500 text-sm">{t("orders")}</div>
-        </div>
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 text-center">
-          <div className="text-3xl font-black text-yellow-600">
-            {ordersList.filter(countsAsPending).length}
-          </div>
-          <div className="text-gray-500 text-sm">{t("order_pending")}</div>
-        </div>
-      </div>
-
-      <div className="flex gap-2 mb-6">
-        {CATEGORY_KINDS.map((k) => {
-          const count = allProducts.filter((p) =>
-            allCategories.some((c) => c.slug === p.category && c.kind === k),
-          ).length;
-          return (
-            <Link
-              key={k}
-              href={`/${locale}/admin?kind=${k}`}
-              className="px-5 py-2 rounded-full text-sm font-semibold border transition-colors"
-              style={{
-                backgroundColor: kind === k ? "#8b0031" : "transparent",
-                color: kind === k ? "#ffffff" : "#8b0031",
-                borderColor: kind === k ? "#8b0031" : "#e5e7eb",
-              }}
-            >
-              {KIND_LABEL_ES[k]} · {count}
+    <div className="adm-page">
+      <PageHeader
+        crumbs={[{ label: dateFmt.format(now).replace(/^./, (c) => c.toUpperCase()) }]}
+        title="Resumen de hoy"
+        description="Esto es lo que pasa hoy en Crooki."
+        actions={
+          <>
+            <RecheckPaymentsButton />
+            <Link href="/admin/pedidos" className="adm-btn adm-btn-primary">
+              <ReceiptText aria-hidden="true" className="h-[18px] w-[18px]" />
+              Ver pedidos
             </Link>
-          );
-        })}
+          </>
+        }
+      />
+
+      {alertOrders.length > 0 && (
+        <div className="adm-alert" role="alert">
+          <TriangleAlert aria-hidden="true" className="mt-0.5 h-[18px] w-[18px] shrink-0" />
+          <div>
+            <b>
+              {alertOrders.length === 1
+                ? "1 pedido con un aviso de pago"
+                : `${alertOrders.length} pedidos con un aviso de pago`}
+            </b>
+            Pedido {shortOrderId(alertOrders[0].id)} de {alertOrders[0].customer_name}:{" "}
+            {warningLines(alertOrders[0].notes).join(" · ").replace(/^⚠\s*/, "")}. Revísalo en Bold antes de preparar.
+          </div>
+          <Link href={`/admin/pedidos?tab=todos&pedido=${alertOrders[0].id}`} className="adm-btn adm-btn-sm adm-btn-danger">
+            Revisar
+          </Link>
+        </div>
+      )}
+
+      {loadError && (
+        <div className="adm-alert warn" role="alert">
+          <TriangleAlert aria-hidden="true" className="mt-0.5 h-[18px] w-[18px] shrink-0" />
+          <div>
+            <b>Parte del resumen no cargó.</b>
+            Recarga la página. Si sigue igual, revisa tu conexión o la sesión.
+          </div>
+        </div>
+      )}
+
+      <div className="adm-metrics">
+        <div className="adm-card adm-metric hl">
+          <div className="adm-metric-l">
+            <ChefHat aria-hidden="true" />
+            Por preparar
+          </div>
+          <div className="adm-metric-v">{counts.preparar ?? "–"}</div>
+          <div className="adm-metric-s">
+            {counts.programados ? `${counts.programados} programado${counts.programados === 1 ? "" : "s"}` : "Ninguno programado"}
+          </div>
+        </div>
+        <div className="adm-card adm-metric">
+          <div className="adm-metric-l">
+            <Banknote aria-hidden="true" />
+            Ventas pagadas hoy
+          </div>
+          <div className="adm-metric-v">{money(paidTotal)}</div>
+          <div className="adm-metric-s">
+            {paidToday.length} pagado{paidToday.length === 1 ? "" : "s"} con Bold · QR no se cuenta
+          </div>
+        </div>
+        <div className="adm-card adm-metric">
+          <div className="adm-metric-l">
+            <ReceiptText aria-hidden="true" />
+            Pedidos hoy
+          </div>
+          <div className="adm-metric-v">{createdToday.length}</div>
+          <div className="adm-metric-s">
+            {byFulfillment("delivery")} domicilio · {byFulfillment("pickup")} recoger · {byFulfillment("dine_in")} local
+          </div>
+        </div>
+        <div className="adm-card adm-metric">
+          <div className="adm-metric-l">
+            <Clock aria-hidden="true" />
+            Sin pagar
+          </div>
+          <div className="adm-metric-v">{counts["sin-pagar"] ?? "–"}</div>
+          <div className="adm-metric-s">No preparar hasta que pague</div>
+        </div>
       </div>
 
-      <div className="space-y-8 mb-12">
-        {cats.map((c) => {
-          const list = byCategory.get(c.slug) ?? [];
-          return (
-            <section key={c.slug}>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-lg font-bold">
-                  {c.label_es}{" "}
-                  <span className="text-gray-400 text-sm font-normal">({list.length})</span>
-                </h2>
-                <Link
-                  href={`/${locale}/admin/productos/nuevo?kind=${kind}&category=${c.slug}`}
-                  className="text-xs font-semibold px-3 py-1.5 rounded-full border hover:bg-gray-50 transition-colors"
-                  style={{ borderColor: "#8b0031", color: "#8b0031" }}
-                >
-                  + Agregar
-                </Link>
-              </div>
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                {list.length === 0 ? (
-                  <div className="p-6 text-center text-gray-400 text-sm">Sin productos en esta categoría</div>
-                ) : (
-                  <div className="divide-y divide-gray-50">
-                    {list.map((p) => (
-                      <div
-                        key={p.id}
-                        className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 transition-colors"
-                      >
-                        <div className="relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
-                          {p.product_images?.[0]?.url ? (
-                            <Image
-                              src={p.product_images[0].url}
-                              alt={p.name_es}
-                              fill
-                              sizes="56px"
-                              className="object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-2xl">
-                              {kind === "merch" ? "👕" : "🍪"}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold truncate">{p.name_es}</p>
-                          <p className="text-gray-500 text-sm">
-                            ${p.price.toLocaleString("es-CO")} ·{" "}
-                            {p.available ? "Disponible" : "Agotado"}
-                          </p>
-                          {(isSaleActive(p) || visibleTag(p)) && (
-                            <p className="flex flex-wrap gap-1.5 mt-1">
-                              {isSaleActive(p) && (
-                                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-[#8b0031] text-white">
-                                  {t("list_on_sale")} ${effectivePrice(p).toLocaleString("es-CO")}
-                                </span>
-                              )}
-                              {visibleTag(p) && (
-                                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-[#0b0b0c] text-[#f3c78b]">
-                                  {tPromo(`tags.${visibleTag(p)!}`)}
-                                </span>
-                              )}
-                            </p>
-                          )}
-                        </div>
-                        {kind === "navidad" && p.slug && (
-                          <Link
-                            href={`/${locale}/navidad/${p.slug}`}
-                            target="_blank"
-                            className="text-sm font-semibold text-gray-500 hover:text-[#8b0031] hover:underline"
-                          >
-                            Ver página
-                          </Link>
-                        )}
-                        <Link
-                          href={`/${locale}/admin/productos/${p.id}/editar`}
-                          className="text-sm font-semibold px-4 py-1.5 border rounded-full hover:bg-gray-100 transition-colors"
-                          style={{ borderColor: "#8b0031", color: "#8b0031" }}
-                        >
-                          Editar
-                        </Link>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </section>
-          );
-        })}
-      </div>
-
-      <div id="orders">
-        <h2 className="text-xl font-bold mb-4">{t("orders")}</h2>
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          {ordersList.length === 0 ? (
-            <div className="p-8 text-center text-gray-400">{t("no_orders")}</div>
+      <div className="adm-grid-2">
+        <section className="adm-card" aria-labelledby="queue-title">
+          <div className="adm-card-h">
+            <h2 id="queue-title">Por preparar ahora</h2>
+            <Link className="adm-more" href="/admin/pedidos">
+              Ver todos
+              <ChevronRight aria-hidden="true" className="h-4 w-4" />
+            </Link>
+          </div>
+          {queue.rows.length === 0 ? (
+            <EmptyState icon={ChefHat}>
+              {queue.error ? "No se pudo cargar la lista." : "Nada por preparar. Cuando entre un pedido, aparece aquí."}
+            </EmptyState>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-gray-50 text-left">
-                    <th className="px-6 py-3 font-semibold text-gray-600">ID</th>
-                    <th className="px-6 py-3 font-semibold text-gray-600">Cliente</th>
-                    <th className="px-6 py-3 font-semibold text-gray-600">Total</th>
-                    <th className="px-6 py-3 font-semibold text-gray-600">Estado</th>
-                    <th className="px-6 py-3 font-semibold text-gray-600 hidden sm:table-cell">{t("col_payment")}</th>
-                    <th className="px-6 py-3 font-semibold text-gray-600">{t("col_delivery")}</th>
-                    <th className="px-6 py-3 font-semibold text-gray-600">Fecha</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {ordersList.map((order) => {
-                    const payKey = payLabelKey(order);
-                    const dimmed = isUnpaidBold(order);
-                    const warnings = warningLines(order.notes);
-                    return (
-                    <tr
-                      key={order.id}
-                      className={`hover:bg-gray-50 transition-colors ${
-                        countsAsPending(order) ? "bg-yellow-50/60" : ""
-                      }`}
-                    >
-                      <td className={`px-6 py-4 font-mono text-xs text-gray-500 ${dimmed ? "opacity-50" : ""}`}>
-                        {order.id.slice(0, 8).toUpperCase()}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className={dimmed ? "opacity-50" : ""}>
-                          <div className="font-medium">{order.customer_name}</div>
-                          <div className="text-gray-400 text-xs">{order.customer_phone}</div>
-                          <span
-                            className={`sm:hidden mt-1 inline-block px-2.5 py-1 rounded-full text-xs font-semibold ${payColors[payKey]}`}
-                          >
-                            {payLabels[payKey]}
-                          </span>
-                        </div>
-                        {warnings.map((w) => (
-                          <div
-                            key={w}
-                            className="mt-1 flex items-start gap-1 rounded-md bg-red-100 px-2 py-1 text-xs font-bold text-red-800"
-                          >
-                            <TriangleAlert className="w-3.5 h-3.5 mt-px shrink-0" />
-                            {w}
-                          </div>
-                        ))}
-                      </td>
-                      <td className={`px-6 py-4 font-bold ${dimmed ? "opacity-50" : ""}`}>
-                        ${order.total.toLocaleString("es-CO")}
-                      </td>
-                      <td className={`px-6 py-4 ${dimmed ? "opacity-50" : ""}`}>
-                        <span
-                          className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                            statusColors[order.status] ?? "bg-gray-100 text-gray-600"
-                          }`}
-                        >
-                          {statusLabels[order.status] ?? order.status}
-                        </span>
-                      </td>
-                      <td className={`px-6 py-4 hidden sm:table-cell ${dimmed ? "opacity-50" : ""}`}>
-                        <span
-                          className={`px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${payColors[payKey]}`}
-                        >
-                          {payLabels[payKey]}
-                        </span>
-                      </td>
-                      <td className={`px-6 py-4 text-xs text-gray-600 ${dimmed ? "opacity-50" : ""}`}>
-                        <div className="font-medium">
-                          {fulfillmentLabels[order.fulfillment ?? ""] ?? "-"}
-                        </div>
-                        {order.scheduled_for && (
-                          <div className="mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-800">
-                            {t("scheduled_badge", { day: openingDayLabel(order.scheduled_for, locale === "en" ? "en" : "es") })}
-                          </div>
-                        )}
-                        {order.fulfillment === "delivery" && (
-                          <div className="text-gray-400">
-                            {order.delivery_zone ?? ""}
-                            {order.delivery_fee
-                              ? ` · ${t("delivery_fee")} $${order.delivery_fee.toLocaleString("es-CO")}`
-                              : ""}
-                          </div>
-                        )}
-                      </td>
-                      <td className={`px-6 py-4 text-gray-500 ${dimmed ? "opacity-50" : ""}`}>
-                        {new Date(order.created_at).toLocaleDateString("es-CO")}
-                      </td>
-                    </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <ul className="adm-queue">
+              {queue.rows.map((o) => (
+                <QueueItem key={o.id} order={o} now={now} />
+              ))}
+            </ul>
           )}
+        </section>
+
+        <div className="adm-stack">
+          <section className="adm-card" aria-labelledby="catalog-title">
+            <div className="adm-card-h">
+              <h2 id="catalog-title">Catálogo</h2>
+              <Link className="adm-more" href="/admin/productos">
+                Productos
+                <ChevronRight aria-hidden="true" className="h-4 w-4" />
+              </Link>
+            </div>
+            <div className="adm-card-b py-2">
+              <ul className="adm-mini">
+                {catalogStats.map((s) => (
+                  <li key={s.label}>
+                    <Link href={s.href}>
+                      <span className={`adm-badge ${s.tone}`}>{s.badge}</span>
+                      {s.label}
+                      <span className="n">{products.error ? "–" : s.n}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+          <section className="adm-card" aria-label="Temporada">
+            <div className="adm-card-b flex items-center gap-3.5">
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[color:var(--adm-wine)] text-[color:var(--adm-gold)]">
+                {season ? <SeasonIcon season={season} className="h-6 w-6" /> : <CalendarClock aria-hidden="true" className="h-6 w-6" />}
+              </span>
+              <div className="min-w-0">
+                <div className="adm-sub">Temporada en la página de inicio</div>
+                <b>{season ? SEASON_NAMES_ES[season] : "Ninguna"}</b>
+              </div>
+              <Link href="/admin/temporadas" className="adm-btn adm-btn-sm ml-auto">
+                Cambiar
+              </Link>
+            </div>
+          </section>
         </div>
       </div>
     </div>
+  );
+}
+
+function QueueItem({ order: o, now }: { order: AdminOrderRow; now: Date }) {
+  const place = FULFILLMENT_LABEL[o.fulfillment ?? ""] ?? "Entrega sin dato";
+  const ago = agoLabel(o.created_at, now);
+  return (
+    <li>
+      <Link href={`/admin/pedidos?pedido=${o.id}`}>
+        <FulfillmentIcon order={o} />
+        <div className="min-w-0">
+          <div className="adm-who truncate">{o.customer_name}</div>
+          <div className="adm-meta">
+            <span>
+              {place}
+              {o.fulfillment === "delivery" && o.delivery_zone ? ` · ${o.delivery_zone}` : ""}
+            </span>
+            {o.scheduled_for ? (
+              <span className="adm-badge info">Programado · {scheduleLabel(o.scheduled_for, now)}</span>
+            ) : (
+              ago && <span>{ago}</span>
+            )}
+          </div>
+        </div>
+        <div className="adm-right">
+          <span className="adm-money">{money(o.total)}</span>
+          <PayBadge pay={payLabelKey(o)} />
+        </div>
+      </Link>
+    </li>
   );
 }
