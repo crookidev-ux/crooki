@@ -20,7 +20,8 @@ export function PageHeader({
   return (
     <div className="adm-ph">
       <div className="min-w-0">
-        {crumbs && crumbs.length > 0 && (
+        {crumbs?.length === 1 && <div className="adm-crumb">{crumbs[0].label}</div>}
+        {crumbs && crumbs.length > 1 && (
           <nav aria-label="Ruta" className="adm-crumb">
             {crumbs.map((c, i) => (
               <span key={c.label} className="inline-flex items-center gap-1.5">

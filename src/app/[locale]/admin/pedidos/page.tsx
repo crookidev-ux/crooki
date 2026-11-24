@@ -96,7 +96,7 @@ export default async function AdminOrdersPage({
       </nav>
 
       <div className="adm-split">
-        <div className="adm-split-in">
+        <div className={`adm-split-in${sp.pedido ? " has-detail" : ""}`}>
           <section className="adm-card min-w-0 overflow-hidden" aria-label="Lista de pedidos">
             <form className="adm-toolbar" action="/admin/pedidos" role="search">
               <label className="adm-search" htmlFor="buscar">
@@ -212,7 +212,7 @@ function OrderRow({ order: o, now, selected, href }: { order: AdminOrderRow; now
         <div className="adm-sub">{time}</div>
       </div>
       <div className="c-dim min-w-0">
-        <b className="block truncate">{o.customer_name}</b>
+        <b className="block break-words">{o.customer_name}</b>
         <div className="adm-sub c-wide">{o.customer_phone}</div>
         <div className="adm-sub c-narrow">
           {place} · {ago ?? time}

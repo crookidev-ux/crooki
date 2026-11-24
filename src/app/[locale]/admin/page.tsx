@@ -119,7 +119,10 @@ export default async function AdminHomePage({ params }: { params: Promise<{ loca
                 : `${alertOrders.length} pedidos con un aviso de pago`}
             </b>
             Pedido {shortOrderId(alertOrders[0].id)} de {alertOrders[0].customer_name}:{" "}
-            {warningLines(alertOrders[0].notes).join(" · ").replace(/^⚠\s*/, "")}. Revísalo en Bold antes de preparar.
+            {warningLines(alertOrders[0].notes)
+              .map((w) => w.replace(/^⚠\s*/, "").replace(/:\s*revisar en Bold$/i, "").toLowerCase())
+              .join(" y ")}
+            . Revísalo en Bold antes de preparar.
           </div>
           <Link href={`/admin/pedidos?tab=todos&pedido=${alertOrders[0].id}`} className="adm-btn adm-btn-sm adm-btn-danger">
             Revisar

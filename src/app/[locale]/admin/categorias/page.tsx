@@ -74,7 +74,7 @@ export default async function AdminCategoriesPage({
                     return (
                       <li key={c.slug} className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-[color:var(--adm-line-2)] px-5 py-3 last:border-b-0">
                         <div className="min-w-0 flex-1 basis-56">
-                          <Link href={`/admin/categorias/${c.slug}/editar`} className="font-semibold hover:text-[color:var(--adm-wine)] hover:underline">
+                          <Link href={`/admin/categorias/${c.slug}/editar`} className="inline-flex min-h-6 items-center font-semibold hover:text-[color:var(--adm-wine)] hover:underline">
                             {c.label_es}
                           </Link>
                           <p className="adm-sub">

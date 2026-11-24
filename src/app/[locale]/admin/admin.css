@@ -64,6 +64,8 @@
   display: grid;
   grid-template-columns: var(--adm-side) minmax(0, 1fr);
   min-height: 100vh;
+  /* Keeps the wine column full height on long pages. */
+  background: linear-gradient(to right, var(--adm-wine) var(--adm-side), transparent var(--adm-side));
 }
 .adm-side {
   background: var(--adm-wine);
@@ -231,6 +233,11 @@
   margin-bottom: 4px;
   display: flex;
   gap: 6px;
+  align-items: center;
+}
+.adm-crumb a {
+  min-height: 24px;
+  display: inline-flex;
   align-items: center;
 }
 .adm-crumb a:hover {
@@ -802,14 +809,14 @@
   grid-column: 2;
   grid-row: 1;
 }
-@container (min-width: 760px) {
+@container (min-width: 700px) {
   .adm-row.order .c-total {
     grid-column: auto;
     grid-row: auto;
   }
 }
 /* Order rows: 5 columns once there is room for them. */
-@container (min-width: 760px) {
+@container (min-width: 700px) {
   .adm-rows-head.orders,
   .adm-row.order {
     display: grid;
@@ -880,7 +887,7 @@
   order: -1;
 }
 @container (min-width: 1000px) {
-  .adm-split-in {
+  .adm-split-in.has-detail {
     grid-template-columns: minmax(0, 1fr) 360px;
   }
   .adm-split-in > .adm-detail {
@@ -985,6 +992,8 @@
 }
 .adm-pname a {
   font-weight: 600;
+  min-height: 24px;
+  line-height: 24px;
 }
 .adm-pname a:hover {
   color: var(--adm-wine);
@@ -1247,8 +1256,8 @@ textarea.adm-input {
   border-top: 1px solid var(--adm-line-2);
 }
 .adm-pick input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   accent-color: var(--adm-wine);
   flex: none;
 }
@@ -1317,6 +1326,7 @@ textarea.adm-input {
 @media (max-width: 760px) {
   .adm-app {
     display: block;
+    background: none;
   }
   .adm-side,
   .adm-topbar {
