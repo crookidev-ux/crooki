@@ -22,9 +22,10 @@ async function getProducts(): Promise<Product[]> {
     // Featured products skip categories the admin hid from the customer pages.
     const { data: cats } = await supabase
       .from("categories")
-      .select("slug, visible");
-    const visibleSlugs = ((cats as { slug: string; visible?: boolean }[] | null) ?? [])
-      .filter((c) => c.visible !== false)
+      .select("slug, visible, kind");
+    // Christmas products have their own pages (/navidad): keep them off the home grid.
+    const visibleSlugs = ((cats as { slug: string; visible?: boolean; kind?: string }[] | null) ?? [])
+      .filter((c) => c.visible !== false && c.kind !== "navidad")
       .map((c) => c.slug);
     let query = supabase
       .from("products")

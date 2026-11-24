@@ -1,6 +1,8 @@
 import "server-only";
 import { cache } from "react";
 import { unstable_rethrow } from "next/navigation";
+import { unstable_cache } from "next/cache";
+import { createClient as createAnonClient } from "@supabase/supabase-js";
 import type { CategoryRow, Product } from "@/lib/types";
 
 // Public reads for the Christmas catalog (/navidad, /navidad/[slug], the
@@ -44,6 +46,34 @@ export const loadNavidadCategories = cache(async (): Promise<CategoryRow[]> => {
     return [];
   }
 });
+
+/**
+ * Whether the Header/Footer show the «Navidad» link. Cookie-less anon read,
+ * cached 5 min, so the layout doesn't make every page (legal, etc.) dynamic.
+ */
+export const hasVisibleNavidad = unstable_cache(
+  async (): Promise<boolean> => {
+    if (!hasDatabase()) return false;
+    try {
+      const supabase = createAnonClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        { auth: { persistSession: false } },
+      );
+      const { data, error } = await supabase
+        .from("categories")
+        .select("visible")
+        .eq("kind", "navidad");
+      if (error) throw error;
+      return (data ?? []).some((c) => c.visible !== false);
+    } catch (err) {
+      console.error("hasVisibleNavidad", err);
+      return false;
+    }
+  },
+  ["navidad-link"],
+  { revalidate: 300 },
+);
 
 /** Products of the visible navidad categories (with a slug), with their category. */
 export const loadNavidadProducts = cache(async (): Promise<Product[]> => {
