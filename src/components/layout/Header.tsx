@@ -9,7 +9,7 @@ import { ShoppingBag, Menu, X } from "lucide-react";
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
-export default function Header({ locale }: { locale: string }) {
+export default function Header({ locale, showNavidad = false }: { locale: string; showNavidad?: boolean }) {
   const t = useTranslations("nav");
   const { itemCount, openCart } = useCartStore();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -26,6 +26,8 @@ export default function Header({ locale }: { locale: string }) {
   const navLinks = [
     { href: "/", label: t("home") },
     { href: "/menu", label: t("menu") },
+    // Only while a Christmas category is visible (decided in the layout).
+    ...(showNavidad ? [{ href: "/navidad", label: t("navidad") }] : []),
     { href: "/merch", label: t("merch") },
     { href: "/legal/terminos-club-crooki", label: t("club") },
     { href: "/mi-pedido", label: t("my_order") },

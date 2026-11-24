@@ -6,7 +6,8 @@
     "admin": "Administrador",
     "merch": "Merch",
     "club": "Club Crooki",
-    "my_order": "Mi pedido"
+    "my_order": "Mi pedido",
+    "navidad": "Navidad"
   },
   "hero": {
     "badge": "Artesanal · Hecho con amor",
@@ -255,7 +256,23 @@
     "sale_tag_hidden": "Esta etiqueta solo se muestra mientras la oferta esté activa.",
     "sale_error_invalid": "El precio de oferta debe ser mayor que 0 y menor que el precio normal",
     "sale_error_date": "La fecha de fin de la oferta no es válida",
-    "list_on_sale": "En oferta"
+    "list_on_sale": "En oferta",
+    "slug": "Dirección de la página (URL)",
+    "slug_help": "Se crea sola desde el nombre en español. Solo minúsculas, números y guiones.",
+    "slug_preview": "Se verá en: {url}",
+    "slug_error": "La dirección solo puede tener minúsculas, números y guiones (máx. 80).",
+    "slug_required": "Los productos de Navidad necesitan una dirección de página.",
+    "slug_taken": "Ya existe otro producto con esa dirección. Cambia la dirección.",
+    "photos_count": "{count} de {max} fotos",
+    "photos_full": "Ya tiene {max} fotos. Quita una para subir otra.",
+    "photos_dropped": "Solo caben {max} fotos por producto: {dropped} no se agregaron.",
+    "photos_order_help": "La primera foto es la portada. Usa las flechas para cambiar el orden.",
+    "photo_cover": "Portada",
+    "photo_left": "Mover a la izquierda",
+    "photo_right": "Mover a la derecha",
+    "photo_remove": "Quitar foto",
+    "photos_limit_db": "La base de datos no permite más de {max} fotos por producto.",
+    "kind_navidad": "Navidad"
   },
   "contact": {
     "whatsapp": "Chatea con nosotros por WhatsApp",
@@ -306,7 +323,9 @@
     "merch_title": "Merch",
     "merch_description": "Gorras, camisetas y tote bags exclusivos de Crooki. Llévate un pedacito de Crooki y de Cartagena contigo.",
     "legal_description": "Políticas y términos de Crooki Bake Bar: tratamiento de datos, cookies y Club Crooki.",
-    "og_alt": "Crooki Bake Bar · Galletas artesanales en Cartagena"
+    "og_alt": "Crooki Bake Bar · Galletas artesanales en Cartagena",
+    "navidad_title": "Navidad",
+    "navidad_description": "Cajas y regalos de Navidad de Crooki Bake Bar, horneados en Cartagena. Elige, agrega al pedido y recíbelos a domicilio o recógelos en el Centro Histórico."
   },
   "lookup": {
     "title": "Mi pedido",
@@ -345,5 +364,34 @@
       "edicion_limitada": "Edición limitada"
     },
     "was_now": "Antes {was}, ahora {now}"
+  },
+  "navidad": {
+    "eyebrow": "Temporada navideña",
+    "title": "Navidad Crooki",
+    "subtitle": "Cajas y regalos recién horneados para compartir, sorprender y endulzar la temporada.",
+    "empty_title": "Muy pronto, la colección de Navidad",
+    "empty_text": "Estamos horneando los regalos de esta temporada. Mientras tanto, mira el menú.",
+    "empty_cta": "Ver el menú",
+    "view_product": "Ver detalle",
+    "breadcrumb": "Ruta de navegación",
+    "home": "Inicio",
+    "back": "Volver a Navidad",
+    "gallery": "Fotos de {name}",
+    "photo_n": "Foto {n} de {total}",
+    "show_photo": "Ver foto {n}",
+    "prev_photo": "Foto anterior",
+    "next_photo": "Foto siguiente",
+    "quantity": "Unidades",
+    "decrease": "Quitar una unidad",
+    "increase": "Agregar una unidad",
+    "max_qty": "Máximo {max} unidades por pedido",
+    "add": "Agregar al pedido",
+    "added": "¡Agregado al pedido!",
+    "sold_out": "Agotado",
+    "sold_out_text": "Este producto se agotó por ahora. Escríbenos por WhatsApp y te avisamos cuando vuelva.",
+    "ask_in_store": "Consultar en tienda",
+    "delivery_any": "Domicilio en Cartagena o recógelo en el local",
+    "description": "Descripción",
+    "more": "Más regalos de Navidad"
   }
 }

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getMessages, getTranslations } from "next-intl/server";
 import { routing } from "@/i18n/routing";
 import { SITE_URL, localizedUrl } from "@/lib/seo";
+import { loadNavidadCategories } from "@/lib/navidad";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import WhatsAppButton from "@/components/layout/WhatsAppButton";
@@ -45,7 +46,8 @@ export default async function LocaleLayout({
   if (!hasLocale(routing.locales, locale)) {
     notFound();
   }
-  const messages = await getMessages();
+  const [messages, navidadCategories] = await Promise.all([getMessages(), loadNavidadCategories()]);
+  const showNavidad = navidadCategories.length > 0;
 
   // Local business data for Google (Maps, local search results).
   const jsonLd = {
@@ -84,10 +86,10 @@ export default async function LocaleLayout({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
-      <Header locale={locale} />
+      <Header locale={locale} showNavidad={showNavidad} />
       <ClosedNotice />
       <main className="flex-1">{children}</main>
-      <Footer />
+      <Footer showNavidad={showNavidad} />
       <CartHydrator />
       <CartDrawer />
       <WhatsAppButton />

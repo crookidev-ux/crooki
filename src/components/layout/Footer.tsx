@@ -21,7 +21,7 @@ function WhatsAppIcon({ className }: { className?: string }) {
   );
 }
 
-export default function Footer() {
+export default function Footer({ showNavidad = false }: { showNavidad?: boolean }) {
   const t = useTranslations("nav");
   const tc = useTranslations("contact");
   const tl = useTranslations("legal");
@@ -116,6 +116,7 @@ export default function Footer() {
             <nav className="flex flex-col gap-2">
               <Link href="/" className={link}>{t("home")}</Link>
               <Link href="/menu" className={link}>{t("menu")}</Link>
+              {showNavidad && <Link href="/navidad" className={link}>{t("navidad")}</Link>}
               <Link href="/merch" className={link}>{t("merch")}</Link>
               <Link href="/legal/terminos-club-crooki" className={link}>{tf("club")}</Link>
               <Link href="/mi-pedido" className={link}>{t("my_order")}</Link>
