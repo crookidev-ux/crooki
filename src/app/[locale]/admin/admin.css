@@ -790,7 +790,11 @@
   justify-self: end;
   text-align: right;
 }
+/* Dimmed rows (sold out, unpaid online) stay AA: lighter text, faded photo. */
 .adm-row.dim .c-dim {
+  color: var(--adm-ink-3);
+}
+.adm-row.dim .c-dim img {
   opacity: 0.6;
 }
 /* Card mode: total stays beside the customer name. */
@@ -860,9 +864,6 @@
   .adm-row.product .c-end.c-edit {
     justify-self: end;
   }
-}
-.adm-row.product .c-switch {
-  justify-self: end;
 }
 
 /* Two-column page areas that collapse when the area itself is narrow. */
