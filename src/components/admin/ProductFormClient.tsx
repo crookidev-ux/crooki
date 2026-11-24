@@ -46,15 +46,23 @@ interface Props {
   allSalsas?: ReferenceProduct[];
 }
 
-// Must match the `product-images` bucket limits
-// (supabase/migrations/20261104000100_product_images_limits.sql).
+// Accepted picks (PNG too); compressImage turns them into webp/jpeg, the only
+// types the `product-images` bucket stores, at most 1 MB
+// (supabase/migrations/20261124020000_product_images_1mb.sql).
 // The extension comes from the real MIME type, never from the file name.
 const IMAGE_EXT_BY_TYPE: Record<string, string> = {
   "image/webp": "webp",
   "image/jpeg": "jpg",
   "image/png": "png",
 };
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 1024 * 1024;
+const BUCKET_URL_MARK = "/storage/v1/object/public/product-images/";
+
+/** Storage path of a stored photo URL, or null if it isn't in our bucket. */
+function storagePath(url: string): string | null {
+  const i = url.indexOf(BUCKET_URL_MARK);
+  return i === -1 ? null : decodeURIComponent(url.slice(i + BUCKET_URL_MARK.length));
+}
 const MAX_IMAGE_WIDTH = 1200;
 
 // The site serves photos as stored (no Vercel optimizer, see next.config.ts),
@@ -167,6 +175,8 @@ export default function ProductFormClient({
       .sort((a, b) => a.display_order - b.display_order)
       .map((img) => ({ key: img.id, existing: img, preview: img.url })),
   );
+  // Stored photos the admin removed: deleted (row + file) only when saving.
+  const [removedPhotos, setRemovedPhotos] = useState<ProductImage[]>([]);
 
   // Determine kind from the product's category (edit) or the URL hint (create).
   const productKind: CategoryKind = useMemo(() => {
@@ -316,7 +326,7 @@ export default function ProductFormClient({
       }
       if (small.size > MAX_IMAGE_BYTES) {
         const mb = (small.size / (1024 * 1024)).toFixed(1);
-        toast.error(`«${f.name}» pesa ${mb} MB. El máximo es 5 MB.`);
+        toast.error(`«${f.name}» pesa ${mb} MB. El máximo es 1 MB.`);
         continue;
       }
       files.push(small);
@@ -337,26 +347,33 @@ export default function ProductFormClient({
 
   const movePhoto = (index: number, to: number) => setPhotos((prev) => moveItem(prev, index, to));
 
-  const removePhoto = async (index: number) => {
+  const removePhoto = (index: number) => {
     const photo = photos[index];
     if (!photo) return;
-    if ("existing" in photo) {
-      // Stored photos are deleted right away (as before); new ones just drop.
-      const supabase = createClient();
-      const { error } = await supabase.from("product_images").delete().eq("id", photo.existing.id);
-      if (error) {
-        toast.error(`No se pudo quitar la foto: ${error.message}`);
-        return;
-      }
-    } else {
-      URL.revokeObjectURL(photo.preview);
-    }
+    // Stored photos are only marked: Cancel keeps them, Save deletes them.
+    if ("existing" in photo) setRemovedPhotos((prev) => [...prev, photo.existing]);
+    else URL.revokeObjectURL(photo.preview);
     setPhotos((prev) => prev.filter((p) => p.key !== photo.key));
   };
 
-  // Uploads the new photos and saves every photo's position (index = display_order).
+  // Deletes the removed photos (row, then file so the bucket doesn't fill up),
+  // uploads the new ones and saves every photo's position (index = display_order).
   const savePhotos = async (productId: string) => {
     const supabase = createClient();
+
+    for (const img of removedPhotos) {
+      const { error } = await supabase.from("product_images").delete().eq("id", img.id);
+      if (error) {
+        toast.error(`No se pudo quitar una foto: ${error.message}`);
+        continue;
+      }
+      const path = storagePath(img.url);
+      if (path) {
+        const { error: fileError } = await supabase.storage.from("product-images").remove([path]);
+        if (fileError) console.error("product-images remove", path, fileError);
+      }
+    }
+    setRemovedPhotos([]);
 
     for (let i = 0; i < photos.length; i++) {
       const photo = photos[i];
@@ -373,7 +390,7 @@ export default function ProductFormClient({
       const file = photo.file;
       const ext = IMAGE_EXT_BY_TYPE[file.type];
       if (!ext || file.size > MAX_IMAGE_BYTES) {
-        toast.error(`«${file.name}» no se subió: solo JPG, PNG o WEBP de hasta 5 MB.`);
+        toast.error(`«${file.name}» no se subió: solo WEBP o JPG de hasta 1 MB.`);
         continue;
       }
       const path = `products/${productId}/${Date.now()}-${i}.${ext}`;
@@ -574,6 +591,14 @@ export default function ProductFormClient({
     if (error) {
       toast.error("Error al eliminar el producto");
     } else {
+      // Its photo files would otherwise stay in the bucket forever.
+      const paths = (product.product_images ?? [])
+        .map((img) => storagePath(img.url))
+        .filter((p): p is string => p !== null);
+      if (paths.length) {
+        const { error: fileError } = await supabase.storage.from("product-images").remove(paths);
+        if (fileError) console.error("product-images remove", fileError);
+      }
       toast.success("Producto eliminado");
       router.push(`/${locale}/admin`);
     }
@@ -953,7 +978,7 @@ export default function ProductFormClient({
             >
               <Upload aria-hidden="true" className="w-8 h-8 text-gray-300 mx-auto mb-2" />
               <span className="block text-sm text-gray-500">{t("drag_drop")}</span>
-              <span className="block text-xs text-gray-400 mt-1">JPG, PNG, WEBP · 5 MB máx.</span>
+              <span className="block text-xs text-gray-400 mt-1">JPG, PNG, WEBP · se comprimen solas</span>
             </button>
           ) : (
             <p className="rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-600">
