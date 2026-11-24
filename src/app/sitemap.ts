@@ -7,7 +7,6 @@ const PAGES: { path: string; priority: number }[] = [
   { path: "/", priority: 1 },
   { path: "/menu", priority: 0.9 },
   { path: "/merch", priority: 0.7 },
-  { path: "/empresas", priority: 0.8 },
   { path: "/legal", priority: 0.3 },
   ...legalDocs.map((d) => ({ path: `/legal/${d.slug}`, priority: 0.3 })),
 ];
