@@ -357,7 +357,7 @@ export default function ProductFormClient({
     }
     const price = parseFloat(form.price) || 0;
     const salePrice = form.sale_price.trim() === "" ? null : Number(form.sale_price);
-    if (salePrice !== null && !(Number.isFinite(salePrice) && salePrice > 0 && salePrice < price)) {
+    if (salePrice !== null && !(Number.isInteger(salePrice) && salePrice >= 1 && salePrice < price)) {
       toast.error(t("sale_error_invalid"));
       return;
     }
@@ -700,13 +700,13 @@ export default function ProductFormClient({
               <input
                 id="sale_price"
                 type="number"
-                inputMode="decimal"
+                inputMode="numeric"
                 value={form.sale_price}
                 onChange={(e) => setForm({ ...form, sale_price: e.target.value })}
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 transition-all"
                 placeholder="—"
                 min="1"
-                step="0.01"
+                step="1"
                 aria-describedby="sale_price_help"
               />
               <p id="sale_price_help" className="text-xs text-gray-500 mt-1">{t("sale_help")}</p>

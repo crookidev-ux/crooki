@@ -19,10 +19,10 @@ ALTER TABLE products
     ));
 
 -- The admin writes straight to the table, so the database enforces the rule
--- the form checks: a sale price is positive and below the normal price.
+-- the form checks: a sale price is whole pesos, at least 1 and below the normal price.
 ALTER TABLE products DROP CONSTRAINT IF EXISTS products_sale_price_check;
 ALTER TABLE products ADD CONSTRAINT products_sale_price_check
-  CHECK (sale_price IS NULL OR (sale_price > 0 AND sale_price < price));
+  CHECK (sale_price IS NULL OR (sale_price >= 1 AND sale_price = round(sale_price) AND sale_price < price));
 
 -- Rollback:
 -- ALTER TABLE products DROP CONSTRAINT IF EXISTS products_sale_price_check;
