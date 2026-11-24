@@ -601,3 +601,28 @@ test("delivery rule: merch plus a drink has no valid fulfillment", () => {
     assert.equal(r.ok, false);
   }
 });
+
+// Christmas products (categories.kind = "navidad") are not merch: catalog.ts
+// sets isMerch only for kind "merch", so they are priced as plain lines (sale
+// price already applied by loadCatalog) and follow their category's rule.
+test("navidad product: plain line, any quantity, follows its category delivery rule", () => {
+  const catalog = makeCatalog();
+  catalog.products.set(
+    "caja-navidad",
+    product({ id: "caja-navidad", price: 35000, name_es: "Caja Navideña", category: "navidad", deliveryRule: "nearby" }),
+  );
+  const items = [{ productId: "caja-navidad", quantity: 4 }];
+  const near = priceCart(input({ items, delivery: zoneIn("bocagrande") }), catalog);
+  assert.equal(near.ok, true);
+  if (near.ok) {
+    assert.equal(near.hasMerch, false);
+    assert.deepEqual(near.lines, [
+      { product_id: "caja-navidad", product_name: "Caja Navideña", quantity: 4, unit_price: 35000 },
+    ]);
+    assert.equal(near.subtotal, 140000);
+  }
+  const far = priceCart(input({ items, delivery: zoneIn("los-ejecutivos") }), catalog);
+  assert.equal(far.ok, false);
+  const pickup = priceCart(input({ items, fulfillment: "pickup", delivery: undefined }), catalog);
+  assert.equal(pickup.ok, true);
+});

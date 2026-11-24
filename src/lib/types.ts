@@ -3,7 +3,8 @@ import type { PromoTag } from "./promo";
 
 export type Locale = "es" | "en";
 
-export type CategoryKind = "menu" | "merch";
+// "navidad" = Christmas catalog with a page per product (/navidad/[slug]).
+export type CategoryKind = "menu" | "merch" | "navidad";
 
 // Kept as string so admin-created categories work without a TS change.
 // The seeded menu order below only controls the legacy mock fallback.
@@ -58,6 +59,9 @@ export interface Product {
   display_order: number;
   created_at: string;
   product_images: ProductImage[];
+  // URL of the product page (/navidad/[slug]); null for menu/merch products.
+  // Optional until migration 20261124010000 is applied.
+  slug?: string | null;
   // Combo-specific fields. `includes_salsa` is meaningful only for combos.
   // The two arrays are populated when the combo product is loaded with its
   // configuration; they're optional everywhere else.

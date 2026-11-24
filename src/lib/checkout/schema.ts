@@ -2,6 +2,7 @@
 // only the known fields, so anything else the browser sends (prices, totals,
 // names) is dropped and can never reach the pricing step.
 import { OUTSIDE_CITY_ZONE_ID } from "../delivery-zones.ts";
+import { MAX_LINE_QTY } from "../cart-limits.ts";
 import { AMOUNT_MISMATCH_NOTE, DOUBLE_CHARGE_NOTE } from "../payments.confirm.ts";
 import type { Fulfillment } from "@/lib/delivery-zones";
 import type { GiftCardChoice } from "@/lib/types";
@@ -32,7 +33,7 @@ export type ParseResult = { ok: true; value: CheckoutInput } | { ok: false; erro
 const MAX_TEXT = 200;
 const MAX_NOTES = 1000;
 const MAX_ITEMS = 100;
-const MAX_QTY = 50;
+const MAX_QTY = MAX_LINE_QTY;
 const MAX_SUB_ROWS = 50;
 
 const FULFILLMENTS: readonly Fulfillment[] = ["delivery", "pickup", "dine_in"];

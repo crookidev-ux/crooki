@@ -7,14 +7,17 @@ import type {
   HeladoSelection,
   Product,
 } from "@/lib/types";
-import { effectivePrice } from "@/lib/promo";
+// Relative .ts imports so `npm test` (plain Node) can load this store.
+import { effectivePrice } from "../lib/promo.ts";
+import { MAX_LINE_QTY } from "../lib/cart-limits.ts";
 
 interface CartStore {
   items: CartItem[];
   isOpen: boolean;
   // False until the saved cart is read from localStorage (see CartHydrator).
   hydrated: boolean;
-  addItem: (product: Product) => void;
+  /** Adds `quantity` units (default 1); a line never exceeds MAX_LINE_QTY. */
+  addItem: (product: Product, quantity?: number) => void;
   addCombo: (product: Product, selection: ComboSelection, unitPrice: number) => void;
   addBox: (product: Product, selection: BoxSelection, unitPrice: number) => void;
   addHelado: (product: Product, selection: HeladoSelection, unitPrice: number) => void;
@@ -61,21 +64,29 @@ export const useCartStore = create<CartStore>()(
       isOpen: false,
       hydrated: false,
 
-      addItem: (product: Product) => {
+      addItem: (product: Product, quantity = 1) => {
         const { items } = get();
         const lineId = product.id;
+        const add = Math.max(1, Math.floor(quantity) || 1);
         const existing = items.find((i) => i.lineId === lineId);
         if (existing) {
           set({
             items: items.map((i) =>
-              i.lineId === lineId ? { ...i, quantity: i.quantity + 1 } : i,
+              i.lineId === lineId
+                ? { ...i, quantity: Math.min(MAX_LINE_QTY, i.quantity + add) }
+                : i,
             ),
           });
         } else {
           set({
             items: [
               ...items,
-              { product, quantity: 1, lineId, unitPrice: effectivePrice(product) },
+              {
+                product,
+                quantity: Math.min(MAX_LINE_QTY, add),
+                lineId,
+                unitPrice: effectivePrice(product),
+              },
             ],
           });
         }
@@ -156,7 +167,7 @@ export const useCartStore = create<CartStore>()(
         }
         set({
           items: get().items.map((i) =>
-            i.lineId === lineId ? { ...i, quantity } : i,
+            i.lineId === lineId ? { ...i, quantity: Math.min(MAX_LINE_QTY, quantity) } : i,
           ),
         });
       },
