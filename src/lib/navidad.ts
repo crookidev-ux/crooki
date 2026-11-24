@@ -1,5 +1,6 @@
 import "server-only";
 import { cache } from "react";
+import { unstable_rethrow } from "next/navigation";
 import type { CategoryRow, Product } from "@/lib/types";
 
 // Public reads for the Christmas catalog (/navidad, /navidad/[slug], the
@@ -38,6 +39,7 @@ export const loadNavidadCategories = cache(async (): Promise<CategoryRow[]> => {
     if (error) throw error;
     return ((data as CategoryRow[] | null) ?? []).filter((c) => c.visible !== false);
   } catch (err) {
+    unstable_rethrow(err); // let Next.js see cookies()/dynamic usage
     console.error("loadNavidadCategories", err);
     return [];
   }
@@ -58,6 +60,7 @@ export const loadNavidadProducts = cache(async (): Promise<Product[]> => {
     if (error) throw error;
     return ((data as Product[] | null) ?? []).map(withSortedImages);
   } catch (err) {
+    unstable_rethrow(err); // let Next.js see cookies()/dynamic usage
     console.error("loadNavidadProducts", err);
     return [];
   }
@@ -82,6 +85,7 @@ export const loadNavidadProduct = cache(
       const category = categories.find((c) => c.slug === product.category)!;
       return { product, category };
     } catch (err) {
+      unstable_rethrow(err);
       console.error("loadNavidadProduct", err);
       return null;
     }
