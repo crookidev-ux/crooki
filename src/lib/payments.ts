@@ -8,6 +8,7 @@ import {
   AMOUNT_MISMATCH_NOTE,
   decideConfirmation,
   DOUBLE_CHARGE_NOTE,
+  PAID_AFTER_CANCEL_NOTE,
   hasSystemNote,
   withNote,
 } from "@/lib/payments.confirm";
@@ -171,7 +172,7 @@ export async function confirmAttempt(
 
   const orderRes = await supabase
     .from("orders")
-    .select("id, payment_status, payment_method")
+    .select("id, payment_status, payment_method, status")
     .eq("id", attempt.order_id)
     .maybeSingle();
   if (orderRes.error) throw new Error(`${tag}: load order: ${orderRes.error.message}`);
@@ -231,10 +232,19 @@ export async function confirmAttempt(
       .eq("id", order.id)
       .eq("payment_method", "bold")
       .neq("payment_status", "paid")
-      .select("id");
+      .select("id, status");
     if (upd.error) throw new Error(`${tag}: mark order paid: ${upd.error.message}`);
     const flipped = Boolean(upd.data && upd.data.length > 0);
-    if (flipped && decision.notify) {
+    // Cancelled in the admin before the customer paid: no "paid" email (nobody
+    // prepares it); flag the order and alert the shop to refund in Bold.
+    const paidAfterCancel = flipped && (upd.data as { status?: string }[])[0]?.status === "cancelled";
+    if (paidAfterCancel) {
+      console.error(`${tag}: order ${order.id} paid after it was cancelled; refund in Bold`);
+      await appendOrderNote(supabase, order.id, PAID_AFTER_CANCEL_NOTE);
+      after(() =>
+        sendPaymentAlert({ kind: "paid_after_cancel", orderId: order.id, boldOrderId, amount, at: now }),
+      );
+    } else if (flipped && decision.notify) {
       const paymentId = event.paymentId ?? attempt.bold_payment_id ?? undefined;
       // after() needs a request scope (see the doc comment above). It runs once
       // the response is sent, so the webhook answers Bold quickly; never throws.

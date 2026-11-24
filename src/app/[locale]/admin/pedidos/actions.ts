@@ -46,6 +46,9 @@ export async function setOrderStatus(orderId: string, next: string): Promise<Act
     .update({ status: next })
     .eq("id", orderId)
     .eq("status", order.status)
+    // Bold may confirm the payment meanwhile: decide again from fresh data.
+    .eq("payment_status", order.payment_status)
+    .eq("payment_method", order.payment_method)
     .select("id");
   if (error) {
     console.error("[admin/pedidos] status change", orderId, next, error);

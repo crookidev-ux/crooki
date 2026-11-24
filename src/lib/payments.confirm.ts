@@ -94,6 +94,7 @@ export function afterLostPaidWrite(
 
 export const DOUBLE_CHARGE_NOTE = "⚠ Posible cobro doble: revisar en Bold";
 export const AMOUNT_MISMATCH_NOTE = "⚠ Monto distinto: revisar en Bold";
+export const PAID_AFTER_CANCEL_NOTE = "⚠ Pagado después de cancelado: reembolsar en Bold";
 
 /**
  * Whether `notes` carries the system `note` as a line of its own (exact match

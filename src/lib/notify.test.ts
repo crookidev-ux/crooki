@@ -100,3 +100,16 @@ test("payment alert: amount mismatch shows both amounts and the order code", () 
   assert.match(text, /\$1\.000/);
   assert.match(text, /NO se marcó como pagado/);
 });
+
+test("paid-after-cancel alert asks for a refund", () => {
+  const { subject, text } = buildPaymentAlertEmail({
+    kind: "paid_after_cancel",
+    orderId: "3f2a9c1e-0000-0000-0000-000000000000",
+    boldOrderId: "CRK-1",
+    amount: 29900,
+    at: "2026-11-24T20:00:00Z",
+  });
+  assert.match(subject, /cancelado #3F2A9C1E/);
+  assert.match(text, /\$29\.900/);
+  assert.match(text, /devolución/);
+});

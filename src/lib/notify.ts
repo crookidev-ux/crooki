@@ -192,7 +192,8 @@ export async function sendPaidOrderEmail(
 
 export type PaymentAlert =
   | { kind: "invalid_signature"; ip: string | null; userAgent: string | null; at: string }
-  | { kind: "amount_mismatch"; orderId: string; boldOrderId: string; expected: number; received: number | undefined; at: string };
+  | { kind: "amount_mismatch"; orderId: string; boldOrderId: string; expected: number; received: number | undefined; at: string }
+  | { kind: "paid_after_cancel"; orderId: string; boldOrderId: string; amount: number; at: string };
 
 /** Subject and body of the alert sent to the shop when a payment looks wrong. */
 export function buildPaymentAlertEmail(alert: PaymentAlert): { subject: string; text: string } {
@@ -214,6 +215,22 @@ export function buildPaymentAlertEmail(alert: PaymentAlert): { subject: string; 
     };
   }
   const code = alert.orderId.slice(0, 8).toUpperCase();
+  if (alert.kind === "paid_after_cancel") {
+    return {
+      subject: `⚠️ Crooki: pagaron el pedido cancelado #${code}`,
+      text: [
+        `Bold confirmó el pago del pedido #${code}, que ya estaba CANCELADO en el admin.`,
+        "No se preparó: hay que devolverle el dinero al cliente o reactivar el pedido.",
+        "",
+        `Monto: $${alert.amount.toLocaleString("es-CO")}`,
+        `Referencia de Bold: ${alert.boldOrderId}`,
+        `Pedido: ${alert.orderId}`,
+        `Fecha: ${alert.at}`,
+        "",
+        "Haz la devolución en panel.bold.co → Transacciones.",
+      ].join("\n"),
+    };
+  }
   return {
     subject: `⚠️ Crooki: monto distinto en el pago del pedido #${code}`,
     text: [

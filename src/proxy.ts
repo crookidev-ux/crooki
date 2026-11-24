@@ -12,6 +12,13 @@ export function proxy(request: NextRequest) {
     url.pathname = pathname.slice(3);
     return NextResponse.redirect(url);
   }
+  // Serve /admin* as Spanish without next-intl's locale detection: with an EN
+  // browser or NEXT_LOCALE=en it would send /admin → /en/admin → /admin… forever.
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/es${pathname}`;
+    return NextResponse.rewrite(url);
+  }
   return handleI18nRouting(request);
 }
 

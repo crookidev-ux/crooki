@@ -3,7 +3,7 @@
 // names) is dropped and can never reach the pricing step.
 import { OUTSIDE_CITY_ZONE_ID } from "../delivery-zones.ts";
 import { MAX_LINE_QTY } from "../cart-limits.ts";
-import { AMOUNT_MISMATCH_NOTE, DOUBLE_CHARGE_NOTE } from "../payments.confirm.ts";
+import { AMOUNT_MISMATCH_NOTE, DOUBLE_CHARGE_NOTE, PAID_AFTER_CANCEL_NOTE } from "../payments.confirm.ts";
 import type { Fulfillment } from "@/lib/delivery-zones";
 import type { GiftCardChoice } from "@/lib/types";
 
@@ -66,7 +66,7 @@ function text(v: unknown, field: string, max = MAX_TEXT, required = true): strin
   return s;
 }
 
-const SYSTEM_NOTES = [DOUBLE_CHARGE_NOTE, AMOUNT_MISMATCH_NOTE];
+const SYSTEM_NOTES = [DOUBLE_CHARGE_NOTE, AMOUNT_MISMATCH_NOTE, PAID_AFTER_CANCEL_NOTE];
 
 /**
  * Customer notes without any line that is exactly one of the payment warnings

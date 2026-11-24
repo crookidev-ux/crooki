@@ -1,7 +1,7 @@
 // Pure builder for the WhatsApp order message (unit-tested with node:test).
 // Today the shop learns about orders from this message, so it carries the
 // whole order: products, delivery, fee, total and, once paid, the Bold ref.
-import { AMOUNT_MISMATCH_NOTE, DOUBLE_CHARGE_NOTE } from "./payments.confirm.ts";
+import { AMOUNT_MISMATCH_NOTE, DOUBLE_CHARGE_NOTE, PAID_AFTER_CANCEL_NOTE } from "./payments.confirm.ts";
 import type { Fulfillment } from "@/lib/delivery-zones";
 import type { PaymentStatus } from "@/lib/types";
 import { scheduledLabelEs } from "./store-hours.ts";
@@ -37,7 +37,7 @@ export interface WhatsAppOrder {
   order_items: WhatsAppOrderItem[];
 }
 
-const INTERNAL_NOTES = [AMOUNT_MISMATCH_NOTE, DOUBLE_CHARGE_NOTE];
+const INTERNAL_NOTES = [AMOUNT_MISMATCH_NOTE, DOUBLE_CHARGE_NOTE, PAID_AFTER_CANCEL_NOTE];
 
 /**
  * Notes as the customer wrote them: drops the payment warnings the server

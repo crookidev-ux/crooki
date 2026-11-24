@@ -1,4 +1,4 @@
-import { DOUBLE_CHARGE_NOTE, AMOUNT_MISMATCH_NOTE } from "./payments.confirm.ts";
+import { DOUBLE_CHARGE_NOTE, AMOUNT_MISMATCH_NOTE, PAID_AFTER_CANCEL_NOTE } from "./payments.confirm.ts";
 
 // Lógica pura de la lista de pedidos del admin (sin React) para poder probarla.
 
@@ -43,7 +43,7 @@ export function sortOrdersForAdmin<T extends OrderLike>(orders: T[]): T[] {
     .map((x) => x.o);
 }
 
-const KNOWN_WARNINGS = [DOUBLE_CHARGE_NOTE, AMOUNT_MISMATCH_NOTE];
+const KNOWN_WARNINGS = [DOUBLE_CHARGE_NOTE, AMOUNT_MISMATCH_NOTE, PAID_AFTER_CANCEL_NOTE];
 
 /** Líneas de las notas que son alertas del sistema (coincidencia exacta; el texto del cliente no cuenta) para mostrarlas destacadas. */
 export function warningLines(notes: string | null | undefined): string[] {
