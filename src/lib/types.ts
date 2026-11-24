@@ -1,4 +1,5 @@
 import type { DeliveryRule, Fulfillment } from "./delivery-zones";
+import type { PromoTag } from "./promo";
 
 export type Locale = "es" | "en";
 
@@ -47,6 +48,11 @@ export interface Product {
   description_es: string;
   description_en: string;
   price: number;
+  // Promotion (src/lib/promo.ts decides if it is active). Optional so mock
+  // rows and databases without the promo migration still type-check.
+  sale_price?: number | null;
+  sale_ends_at?: string | null;
+  promo_tag?: PromoTag | null;
   category: string;
   available: boolean;
   display_order: number;

@@ -4,6 +4,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServiceClient } from "@/lib/supabase/service";
 import { parseDeliveryRule, type DeliveryRule } from "@/lib/delivery-zones";
+import { effectivePrice } from "@/lib/promo";
 import type { Catalog, CatalogProduct } from "./price-cart";
 
 type ProductRow = {
@@ -11,6 +12,9 @@ type ProductRow = {
   name_es: string;
   name_en: string;
   price: number | string;
+  // Promo columns (migration 20261124000000); absent until it is applied.
+  sale_price?: number | string | null;
+  sale_ends_at?: string | null;
   available: boolean;
   category: string;
   includes_salsa?: boolean | null;
@@ -88,11 +92,11 @@ export async function loadCatalog(
   const allIds = new Set(ids);
   for (const r of [...comboCookies, ...comboSalsas, ...boxCookies]) allIds.add(r.child);
 
+  // "*" so checkout keeps working (at the normal price) if the promo
+  // migration has not been applied yet; ProductRow lists what is read.
   const productsRes = await supabase
     .from("products")
-    .select(
-      "id, name_es, name_en, price, available, category, includes_salsa, box_cookie_count, gift_card_price, gift_card_cake_price, included_salsas_count",
-    )
+    .select("*")
     .in("id", [...allIds]);
   const rows = unwrap<ProductRow>(productsRes, "products");
 
@@ -114,7 +118,8 @@ export async function loadCatalog(
   }
 
   for (const r of rows) {
-    const price = toMoney(r.price);
+    // The price charged is the sale price while the sale is active.
+    const price = toMoney(r.price) === null ? null : toMoney(effectivePrice(r));
     const giftPrice = toMoney(r.gift_card_price);
     const giftCakePrice = toMoney(r.gift_card_cake_price);
     // Unusable money (non-finite or negative) makes the product unavailable.
