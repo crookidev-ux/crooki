@@ -156,11 +156,11 @@ export default function SocialPostForm() {
   };
 
   return (
-    <form onSubmit={submit} noValidate className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6 flex flex-col gap-5">
-      <h2 className="text-lg font-bold text-gray-900">Agregar un post</h2>
+    <form onSubmit={submit} noValidate aria-labelledby="social-form-title" className="adm-card flex flex-col gap-5 p-5 sm:p-6">
+      <h2 id="social-form-title" className="text-lg font-semibold">Agregar un post</h2>
 
       <div>
-        <label htmlFor="social-link" className="block text-sm font-semibold mb-1.5 text-gray-700">
+        <label htmlFor="social-link" className="adm-lbl mb-1.5 block">
           Enlace del post *
         </label>
         <input
@@ -175,12 +175,12 @@ export default function SocialPostForm() {
           }}
           aria-invalid={linkError ? true : undefined}
           aria-describedby={linkError ? "social-link-error" : "social-link-hint"}
-          className={`w-full border rounded-xl px-4 py-3 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#8b0031] ${linkError ? "border-red-400" : "border-gray-200"}`}
+          className="adm-input"
         />
         {linkError ? (
-          <p id="social-link-error" role="alert" className="text-red-500 text-xs mt-1">{linkError}</p>
+          <p id="social-link-error" role="alert" className="adm-error mt-1">{linkError}</p>
         ) : (
-          <p id="social-link-hint" className="text-xs text-gray-500 mt-1 flex items-center gap-1.5">
+          <p id="social-link-hint" className="adm-help mt-1 flex items-center gap-1.5">
             {parsed?.network === "instagram" && <><InstagramIcon className="w-3.5 h-3.5" /> Instagram</>}
             {parsed?.network === "tiktok" && <><TikTokIcon className="w-3.5 h-3.5" /> TikTok</>}
             {!parsed && "En la app: Compartir → Copiar enlace."}
@@ -189,19 +189,19 @@ export default function SocialPostForm() {
       </div>
 
       <div>
-        <span className="block text-sm font-semibold mb-1.5 text-gray-700">Video del post *</span>
+        <span className="adm-lbl mb-1.5 block">Video del post *</span>
         <div className="flex flex-col sm:flex-row gap-4 items-start">
           <label
             htmlFor="social-video"
-            className="flex-1 w-full border-2 border-dashed border-gray-200 rounded-xl p-6 text-center cursor-pointer hover:border-[#8b0031] transition-colors focus-within:ring-2 focus-within:ring-[#8b0031]"
+            className="adm-drop flex-1 focus-within:outline focus-within:outline-[3px] focus-within:outline-[color:var(--adm-wine)]"
           >
             {reading ? (
-              <Loader2 className="w-8 h-8 text-gray-300 mx-auto mb-2 animate-spin" aria-hidden="true" />
+              <Loader2 className="h-7 w-7 animate-spin text-[color:var(--adm-wine)]" aria-hidden="true" />
             ) : (
-              <Upload className="w-8 h-8 text-gray-300 mx-auto mb-2" aria-hidden="true" />
+              <Upload className="h-7 w-7 text-[color:var(--adm-wine)]" aria-hidden="true" />
             )}
-            <span className="block text-sm text-gray-600">{file ? file.name : "Elige el video (el mismo que publicaste)"}</span>
-            <span className="block text-xs text-gray-400 mt-1">MP4 o MOV · máximo 50 MB · vertical 9:16</span>
+            <span className="block font-semibold">{file ? file.name : "Elige el video (el mismo que publicaste)"}</span>
+            <span className="adm-sub block">MP4 o MOV · máximo 50 MB · vertical 9:16</span>
             <input
               ref={fileInput}
               id="social-video"
@@ -216,16 +216,16 @@ export default function SocialPostForm() {
           {poster && (
             // Local blob preview; next/image can't load it.
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={poster.url} alt="Portada del video" className="w-28 aspect-[9/16] object-cover rounded-xl border border-gray-100" />
+            <img src={poster.url} alt="Portada del video" className="aspect-[9/16] w-28 rounded-xl border border-[color:var(--adm-line)] object-cover" />
           )}
         </div>
         {fileError && (
-          <p id="social-video-error" role="alert" className="text-red-500 text-xs mt-1">{fileError}</p>
+          <p id="social-video-error" role="alert" className="adm-error mt-1">{fileError}</p>
         )}
       </div>
 
       <div>
-        <label htmlFor="social-caption" className="block text-sm font-semibold mb-1.5 text-gray-700">
+        <label htmlFor="social-caption" className="adm-lbl mb-1.5 block">
           Texto corto (opcional)
         </label>
         <textarea
@@ -235,15 +235,14 @@ export default function SocialPostForm() {
           placeholder="Ej.: El caso de la galleta roja"
           value={caption}
           onChange={(e) => setCaption(e.target.value)}
-          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-base sm:text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#8b0031]"
+          className="adm-input"
         />
       </div>
 
       <button
         type="submit"
         disabled={saving || reading}
-        className="self-start inline-flex items-center gap-2 text-white font-bold px-6 py-3 rounded-full disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8b0031]"
-        style={{ backgroundColor: "#8b0031" }}
+        className="adm-btn adm-btn-primary self-start"
       >
         {saving && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
         {saving ? "Subiendo video…" : "Publicar en la página"}

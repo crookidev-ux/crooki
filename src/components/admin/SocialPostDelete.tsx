@@ -45,11 +45,9 @@ export default function SocialPostDelete({ id, videoPath, posterPath }: Props) {
       type="button"
       onClick={remove}
       disabled={busy}
-      className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-full transition-colors disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8b0031] ${
-        armed ? "bg-red-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-red-50 hover:text-red-700"
-      }`}
+      className={`adm-btn adm-btn-sm w-full ${armed ? "adm-btn-danger-solid" : "adm-btn-danger"}`}
     >
-      {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />}
+      {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Trash2 className="h-4 w-4" aria-hidden="true" />}
       {armed ? "Toca otra vez para quitar" : "Quitar"}
     </button>
   );

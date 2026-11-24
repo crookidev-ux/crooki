@@ -1,97 +1,92 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "@/i18n/navigation";
-import { useTranslations } from "next-intl";
-import { Loader2, Lock } from "lucide-react";
-import { toast } from "sonner";
+import { Loader2, Lock, TriangleAlert } from "lucide-react";
 
-export default function AdminLoginClient() {
-  const t = useTranslations("admin");
+export default function AdminLoginClient({ noAccess = false }: { noAccess?: boolean }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(
+    noAccess ? "Esa cuenta no tiene permiso para entrar al panel. Pide acceso a un administrador." : null,
+  );
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      toast.error("Credenciales incorrectas. Verificá tu email y contraseña.");
-    } else {
-      router.push("/admin");
+    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+    if (authError) {
+      setError("Correo o contraseña incorrectos. Revísalos e inténtalo de nuevo.");
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+    router.push("/admin");
+    router.refresh();
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: "#fdf8f0" }}>
+    <main className="flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-10">
-          <div
-            className="inline-block text-white text-3xl font-black px-6 py-3 rounded-xl mb-4"
-            style={{ backgroundColor: "#8b0031" }}
-          >
-            CROOKI
-          </div>
-          <h1 className="text-2xl font-bold text-gray-800">{t("login_title")}</h1>
+        <div className="mb-8 flex flex-col items-center gap-3 text-center">
+          <span className="rounded-2xl bg-[color:var(--adm-wine)] px-6 py-4">
+            <Image src="/crooki-wordmark.png" alt="Crooki" width={661} height={140} className="h-8 w-auto" priority />
+          </span>
+          <h1 className="text-2xl font-semibold text-[color:var(--adm-wine)]">Acceso al panel</h1>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <div className="flex justify-center mb-6">
-            <div
-              className="w-14 h-14 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: "#8b003115" }}
-            >
-              <Lock className="w-7 h-7" style={{ color: "#8b0031" }} />
-            </div>
+        <div className="adm-card p-6 sm:p-8">
+          <div className="mb-6 flex justify-center">
+            <span className="grid h-14 w-14 place-items-center rounded-full bg-[color:var(--adm-wine-50)] text-[color:var(--adm-wine)]">
+              <Lock aria-hidden="true" className="h-7 w-7" />
+            </span>
           </div>
 
-          <form onSubmit={handleLogin} className="flex flex-col gap-5">
-            <div>
-              <label className="block text-sm font-semibold mb-1.5 text-gray-700">
-                {t("email")}
-              </label>
+          {error && (
+            <div className="adm-alert mb-5" role="alert">
+              <TriangleAlert aria-hidden="true" className="mt-0.5 h-[18px] w-[18px] shrink-0" />
+              <div>{error}</div>
+            </div>
+          )}
+
+          <form onSubmit={handleLogin} className="flex flex-col gap-4">
+            <div className="adm-field">
+              <label htmlFor="login-email">Correo electrónico</label>
               <input
+                id="login-email"
                 type="email"
+                inputMode="email"
+                autoComplete="username"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 transition-all"
-                placeholder="admin@crooki.com"
+                className="adm-input"
               />
             </div>
-            <div>
-              <label className="block text-sm font-semibold mb-1.5 text-gray-700">
-                {t("password")}
-              </label>
+            <div className="adm-field">
+              <label htmlFor="login-password">Contraseña</label>
               <input
+                id="login-password"
                 type="password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 transition-all"
-                placeholder="••••••••"
+                className="adm-input"
               />
             </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 text-white font-bold py-3.5 rounded-full transition-opacity hover:opacity-90 disabled:opacity-60 mt-2"
-              style={{ backgroundColor: "#8b0031" }}
-            >
-              {loading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : null}
-              {loading ? "Ingresando..." : t("login")}
+            <button type="submit" disabled={loading} className="adm-btn adm-btn-primary mt-2 w-full">
+              {loading && <Loader2 aria-hidden="true" className="h-[18px] w-[18px] animate-spin" />}
+              {loading ? "Entrando…" : "Entrar"}
             </button>
           </form>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

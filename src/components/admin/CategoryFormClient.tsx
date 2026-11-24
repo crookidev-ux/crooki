@@ -1,21 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Loader2, Trash2, ArrowLeft } from "lucide-react";
+import { Check, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { CATEGORY_KINDS, KIND_LABEL_ES, type CategoryKind, type CategoryRow } from "@/lib/types";
 import { NEARBY_MAX_KM, type DeliveryRule } from "@/lib/delivery-zones";
 import { slugify } from "@/lib/slug";
+import { PageHeader } from "./ui";
+import { ConfirmButton, Switch } from "./controls";
 
 interface Props {
   locale: string;
   mode: "create" | "edit";
   category?: CategoryRow;
+  /** Products in this category (edit only), for the delete warning. */
+  productCount?: number;
 }
 
-export default function CategoryFormClient({ locale, mode, category }: Props) {
+export default function CategoryFormClient({ mode, category, productCount = 0 }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
@@ -31,7 +35,7 @@ export default function CategoryFormClient({ locale, mode, category }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.label_es.trim()) {
-      toast.error("El nombre en español es requerido");
+      toast.error("El nombre en español es obligatorio.");
       return;
     }
 
@@ -47,16 +51,13 @@ export default function CategoryFormClient({ locale, mode, category }: Props) {
       delivery_rule: form.delivery_rule,
     };
 
-    const { error } =
+    const { data, error } =
       mode === "create"
-        ? await supabase.from("categories").insert(row)
-        : await supabase
-            .from("categories")
-            .update(row)
-            .eq("slug", category!.slug);
+        ? await supabase.from("categories").insert(row).select("slug")
+        : await supabase.from("categories").update(row).eq("slug", category!.slug).select("slug");
 
-    if (error) {
-      toast.error(`Error: ${error.message}`);
+    if (error || !data?.length) {
+      toast.error(error ? `Error: ${error.message}` : "No se guardó: revisa tu sesión.");
     } else {
       toast.success(mode === "create" ? "Categoría creada" : "Categoría actualizada");
       router.push(`/admin/categorias`);
@@ -66,20 +67,11 @@ export default function CategoryFormClient({ locale, mode, category }: Props) {
 
   const handleDelete = async () => {
     if (!category) return;
-    if (
-      !confirm(
-        `¿Eliminar la categoría "${category.label_es}"? Los productos asignados quedarán sin categoría y no se mostrarán.`,
-      )
-    )
-      return;
     setLoading(true);
     const supabase = createClient();
-    const { error } = await supabase
-      .from("categories")
-      .delete()
-      .eq("slug", category.slug);
-    if (error) {
-      toast.error(`Error: ${error.message}`);
+    const { data, error } = await supabase.from("categories").delete().eq("slug", category.slug).select("slug");
+    if (error || !data?.length) {
+      toast.error(error ? `Error: ${error.message}` : "No se eliminó: revisa tu sesión.");
     } else {
       toast.success("Categoría eliminada");
       router.push(`/admin/categorias`);
@@ -87,177 +79,180 @@ export default function CategoryFormClient({ locale, mode, category }: Props) {
     setLoading(false);
   };
 
+  const saveButton = (
+    <button type="submit" form="category-form" disabled={loading} className="adm-btn adm-btn-primary">
+      {loading ? <Loader2 aria-hidden="true" className="h-[18px] w-[18px] animate-spin" /> : <Check aria-hidden="true" className="h-[18px] w-[18px]" />}
+      {loading ? "Guardando…" : "Guardar"}
+    </button>
+  );
+
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
-      <a
-        href={`/${locale}/admin/categorias`}
-        className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 mb-6"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Volver a categorías
-      </a>
+    <div className="adm-page has-savebar">
+      <PageHeader
+        crumbs={[{ label: "Categorías", href: "/admin/categorias" }, { label: mode === "create" ? "Nueva" : "Editar" }]}
+        title={mode === "create" ? "Nueva categoría" : category?.label_es ?? "Editar categoría"}
+        actions={
+          mode === "edit" && category ? (
+            <ConfirmButton
+              disabled={loading}
+              title="¿Eliminar esta categoría?"
+              body={
+                productCount > 0 ? (
+                  <>
+                    «{category.label_es}» tiene {productCount} producto{productCount === 1 ? "" : "s"}. Quedarán sin
+                    categoría y no se mostrarán en la tienda. Si solo quieres esconderla, usa «Visible en la web».
+                  </>
+                ) : (
+                  <>«{category.label_es}» no tiene productos. Se borra para siempre.</>
+                )
+              }
+              confirmLabel="Sí, eliminar"
+              onConfirm={handleDelete}
+            >
+              <Trash2 aria-hidden="true" className="h-[18px] w-[18px]" />
+              Eliminar
+            </ConfirmButton>
+          ) : undefined
+        }
+      />
 
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-black" style={{ color: "#8b0031" }}>
-          {mode === "create" ? "Nueva categoría" : "Editar categoría"}
-        </h1>
-        {mode === "edit" && (
-          <button
-            onClick={handleDelete}
-            disabled={loading}
-            className="flex items-center gap-2 text-red-600 border border-red-200 px-4 py-2 rounded-full text-sm font-semibold hover:bg-red-50 transition-colors"
-          >
-            <Trash2 className="w-4 h-4" />
-            Eliminar
-          </button>
-        )}
-      </div>
-
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        <div>
-          <label className="block text-sm font-semibold mb-1.5 text-gray-700">Tipo</label>
-          <div className="flex gap-2">
-            {CATEGORY_KINDS.map((k) => (
-              <button
-                key={k}
-                type="button"
-                onClick={() => setForm({ ...form, kind: k })}
-                disabled={mode === "edit"}
-                className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold border transition-colors disabled:opacity-60"
-                style={{
-                  backgroundColor: form.kind === k ? "#8b0031" : "transparent",
-                  color: form.kind === k ? "#ffffff" : "#8b0031",
-                  borderColor: form.kind === k ? "#8b0031" : "#e5e7eb",
-                }}
-              >
-                {KIND_LABEL_ES[k]}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold mb-1.5 text-gray-700">Nombre (Español) *</label>
-          <input
-            type="text"
-            value={form.label_es}
-            onChange={(e) => setForm({ ...form, label_es: e.target.value })}
-            required
-            placeholder="Galletas"
-            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold mb-1.5 text-gray-700">Nombre (Inglés)</label>
-          <input
-            type="text"
-            value={form.label_en}
-            onChange={(e) => setForm({ ...form, label_en: e.target.value })}
-            placeholder="Cookies"
-            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-semibold mb-1.5 text-gray-700">
-              Slug {mode === "edit" && <span className="text-gray-400 text-xs">(no editable)</span>}
-            </label>
-            <input
-              type="text"
-              value={form.slug}
-              onChange={(e) => setForm({ ...form, slug: slugify(e.target.value) })}
-              disabled={mode === "edit"}
-              placeholder="galletas"
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 font-mono disabled:bg-gray-50"
-            />
-            <p className="text-xs text-gray-400 mt-1">
-              Se genera desde el nombre si está vacío. Solo minúsculas, números y guiones.
-            </p>
-          </div>
-          <div>
-            <label className="block text-sm font-semibold mb-1.5 text-gray-700">Orden de display</label>
-            <input
-              type="number"
-              value={form.display_order}
-              onChange={(e) => setForm({ ...form, display_order: e.target.value })}
-              min="0"
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold mb-1.5 text-gray-700">
-            Visible en la web
-          </label>
-          <label className="flex items-center gap-3 cursor-pointer mt-1">
-            <div className="relative">
-              <input
-                type="checkbox"
-                checked={form.visible}
-                onChange={(e) => setForm({ ...form, visible: e.target.checked })}
-                className="sr-only"
-              />
-              <div
-                className="w-12 h-6 rounded-full transition-colors"
-                style={{ backgroundColor: form.visible ? "#8b0031" : "#d1d5db" }}
-              >
-                <div
-                  className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform"
-                  style={{ transform: form.visible ? "translateX(26px)" : "translateX(2px)" }}
-                />
-              </div>
-            </div>
-            <span className="text-sm font-medium text-gray-700">
-              {form.visible ? "Visible para clientes" : "Oculta para clientes"}
+      <form id="category-form" onSubmit={handleSubmit} className="adm-card adm-cq max-w-3xl">
+        <div className="adm-card-b">
+          <div className="adm-field">
+            <span className="adm-lbl" id="cat-kind-label">
+              Tipo {mode === "edit" && <span className="adm-sub">(no se puede cambiar)</span>}
             </span>
-          </label>
-          <p className="text-xs text-gray-400 mt-1">
-            Las categorías ocultas no aparecen en el menú, en merch ni en Navidad, pero
-            siguen siendo editables en el panel. Una categoría de Navidad visible
-            muestra el enlace «Navidad» en el menú del sitio.
-          </p>
-        </div>
+            <div className="adm-seg" role="group" aria-labelledby="cat-kind-label">
+              {CATEGORY_KINDS.map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  aria-pressed={form.kind === k}
+                  onClick={() => setForm({ ...form, kind: k })}
+                  disabled={mode === "edit"}
+                >
+                  {KIND_LABEL_ES[k]}
+                </button>
+              ))}
+            </div>
+          </div>
 
-        <div>
-          <label htmlFor="category-delivery-rule" className="block text-sm font-semibold mb-1.5 text-gray-700">
-            Domicilio
-          </label>
-          <select
-            id="category-delivery-rule"
-            value={form.delivery_rule}
-            onChange={(e) => setForm({ ...form, delivery_rule: e.target.value as DeliveryRule })}
-            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm bg-white focus:outline-none focus:ring-2"
-          >
-            <option value="any">Sin límite de distancia</option>
-            <option value="nearby">Solo hasta {NEARBY_MAX_KM} km</option>
-            <option value="none">Sin domicilio (solo recoger o comer en el local)</option>
-          </select>
-          <p className="text-xs text-gray-400 mt-1">
-            Un pedido sigue la regla más estricta entre sus productos.
-          </p>
-        </div>
+          <div className="adm-row2">
+            <div className="adm-field">
+              <label htmlFor="cat-label-es">Nombre en español *</label>
+              <input
+                id="cat-label-es"
+                type="text"
+                value={form.label_es}
+                onChange={(e) => setForm({ ...form, label_es: e.target.value })}
+                required
+                placeholder="Galletas"
+                className="adm-input"
+              />
+            </div>
+            <div className="adm-field">
+              <label htmlFor="cat-label-en">Nombre en inglés</label>
+              <input
+                id="cat-label-en"
+                type="text"
+                value={form.label_en}
+                onChange={(e) => setForm({ ...form, label_en: e.target.value })}
+                placeholder="Cookies"
+                className="adm-input"
+                aria-describedby="cat-label-en-help"
+              />
+              <span id="cat-label-en-help" className="adm-help">
+                Vacío = se usa el nombre en español.
+              </span>
+            </div>
+          </div>
 
-        <div className="flex gap-4 pt-2">
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex-1 flex items-center justify-center gap-2 text-white font-bold py-4 rounded-full transition-opacity hover:opacity-90 disabled:opacity-60"
-            style={{ backgroundColor: "#8b0031" }}
-          >
-            {loading && <Loader2 className="w-5 h-5 animate-spin" />}
-            {loading ? "Guardando..." : "Guardar"}
-          </button>
-          <a
-            href={`/${locale}/admin/categorias`}
-            className="px-8 py-4 rounded-full border border-gray-200 font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            Cancelar
-          </a>
+          <div className="adm-row2">
+            <div className="adm-field">
+              <label htmlFor="cat-slug">Identificador (slug)</label>
+              <input
+                id="cat-slug"
+                type="text"
+                value={form.slug}
+                onChange={(e) => setForm({ ...form, slug: slugify(e.target.value) })}
+                disabled={mode === "edit"}
+                placeholder="galletas"
+                className="adm-input font-mono"
+                aria-describedby="cat-slug-help"
+              />
+              <span id="cat-slug-help" className="adm-help">
+                {mode === "edit"
+                  ? "No se puede cambiar: los productos lo usan."
+                  : "Se genera desde el nombre si está vacío. Solo minúsculas, números y guiones."}
+              </span>
+            </div>
+            <div className="adm-field">
+              <label htmlFor="cat-order">Posición</label>
+              <input
+                id="cat-order"
+                type="number"
+                inputMode="numeric"
+                value={form.display_order}
+                onChange={(e) => setForm({ ...form, display_order: e.target.value })}
+                min="0"
+                className="adm-input"
+                aria-describedby="cat-order-help"
+              />
+              <span id="cat-order-help" className="adm-help">
+                Los números más bajos van primero.
+              </span>
+            </div>
+          </div>
+
+          <div className="adm-field">
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={form.visible}
+                onChange={(v) => setForm({ ...form, visible: v })}
+                labelledBy="cat-visible-label"
+                describedBy="cat-visible-help"
+              />
+              <b id="cat-visible-label">{form.visible ? "Visible en la web" : "Oculta en la web"}</b>
+            </div>
+            <span id="cat-visible-help" className="adm-help">
+              Las categorías ocultas no aparecen en el menú, en merch ni en Navidad, pero siguen siendo editables aquí.
+              Una categoría de Navidad visible muestra el enlace «Navidad» en el menú del sitio.
+            </span>
+          </div>
+
+          <div className="adm-field">
+            <label htmlFor="category-delivery-rule">Domicilio</label>
+            <select
+              id="category-delivery-rule"
+              value={form.delivery_rule}
+              onChange={(e) => setForm({ ...form, delivery_rule: e.target.value as DeliveryRule })}
+              className="adm-input"
+              aria-describedby="cat-rule-help"
+            >
+              <option value="any">Sin límite de distancia</option>
+              <option value="nearby">Solo hasta {NEARBY_MAX_KM} km</option>
+              <option value="none">Sin domicilio (solo recoger o comer en el local)</option>
+            </select>
+            <span id="cat-rule-help" className="adm-help">
+              Un pedido sigue la regla más estricta entre sus productos.
+            </span>
+          </div>
+
+          <div className="adm-side-actions mt-2 justify-end">
+            <Link href="/admin/categorias" className="adm-btn">
+              Cancelar
+            </Link>
+            {saveButton}
+          </div>
         </div>
       </form>
+
+      <div className="adm-savebar">
+        <Link href="/admin/categorias" className="adm-btn">
+          Cancelar
+        </Link>
+        {saveButton}
+      </div>
     </div>
   );
 }

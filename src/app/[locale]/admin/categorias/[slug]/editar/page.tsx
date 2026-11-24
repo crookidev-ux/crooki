@@ -11,11 +11,10 @@ export default async function EditCategoryPage({
   const { locale, slug } = await params;
   const { supabase } = await requireAdmin(locale);
 
-  const { data: category } = await supabase
-    .from("categories")
-    .select("*")
-    .eq("slug", slug)
-    .single();
+  const [{ data: category }, { count }] = await Promise.all([
+    supabase.from("categories").select("*").eq("slug", slug).single(),
+    supabase.from("products").select("id", { count: "exact", head: true }).eq("category", slug),
+  ]);
 
   if (!category) notFound();
 
@@ -24,6 +23,7 @@ export default async function EditCategoryPage({
       locale={locale}
       mode="edit"
       category={category as CategoryRow}
+      productCount={count ?? 0}
     />
   );
 }

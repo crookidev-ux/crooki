@@ -1,8 +1,15 @@
-import Link from "next/link";
-import { Plus } from "lucide-react";
+import { CirclePlus, Tags, TriangleAlert } from "lucide-react";
+import { Link } from "@/i18n/navigation";
 import { requireAdmin } from "@/lib/admin-auth";
 import CategoryVisibilityToggle from "@/components/admin/CategoryVisibilityToggle";
-import type { CategoryRow } from "@/lib/types";
+import { EmptyState, PageHeader } from "@/components/admin/ui";
+import { CATEGORY_KINDS, KIND_LABEL_ES, type CategoryRow } from "@/lib/types";
+
+const RULE_LABEL: Record<string, string> = {
+  any: "Domicilio sin límite",
+  nearby: "Domicilio cercano",
+  none: "Sin domicilio",
+};
 
 export default async function AdminCategoriesPage({
   params,
@@ -12,86 +19,82 @@ export default async function AdminCategoriesPage({
   const { locale } = await params;
   const { supabase } = await requireAdmin(locale);
 
-  const { data: categories } = await supabase
-    .from("categories")
-    .select("*")
-    .order("kind")
-    .order("display_order");
+  const [{ data: categories, error }, { data: products }] = await Promise.all([
+    supabase.from("categories").select("*").order("kind").order("display_order"),
+    supabase.from("products").select("category"),
+  ]);
 
   const rows = (categories as CategoryRow[]) ?? [];
-  const menu = rows.filter((c) => c.kind === "menu");
-  const merch = rows.filter((c) => c.kind === "merch");
-  const navidad = rows.filter((c) => c.kind === "navidad");
-
-  const { data: products } = await supabase
-    .from("products")
-    .select("category");
-
   const counts = new Map<string, number>();
   for (const p of (products as { category: string }[] | null) ?? []) {
     counts.set(p.category, (counts.get(p.category) ?? 0) + 1);
   }
 
-  function renderGroup(title: string, list: CategoryRow[]) {
-    return (
-      <div className="mb-10">
-        <h2 className="text-xl font-bold mb-4">{title}</h2>
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          {list.length === 0 ? (
-            <div className="p-8 text-center text-gray-400">Sin categorías</div>
-          ) : (
-            <div className="divide-y divide-gray-50">
-              {list.map((c) => (
-                <div
-                  key={c.slug}
-                  className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold">{c.label_es}</p>
-                    <p className="text-gray-500 text-sm">
-                      <span className="font-mono">{c.slug}</span> · {c.label_en} · orden {c.display_order} ·{" "}
-                      {counts.get(c.slug) ?? 0} producto{(counts.get(c.slug) ?? 0) === 1 ? "" : "s"}
-                    </p>
-                  </div>
-                  <CategoryVisibilityToggle
-                    slug={c.slug}
-                    initialVisible={c.visible !== false}
-                  />
-                  <Link
-                    href={`/${locale}/admin/categorias/${c.slug}/editar`}
-                    className="text-sm font-semibold px-4 py-1.5 border rounded-full hover:bg-gray-100 transition-colors"
-                    style={{ borderColor: "#8b0031", color: "#8b0031" }}
-                  >
-                    Editar
-                  </Link>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-black" style={{ color: "#8b0031" }}>
-          Categorías
-        </h1>
-        <Link
-          href={`/${locale}/admin/categorias/nueva`}
-          className="flex items-center gap-2 text-white font-bold px-5 py-2.5 rounded-full transition-opacity hover:opacity-90 text-sm"
-          style={{ backgroundColor: "#8b0031" }}
-        >
-          <Plus className="w-4 h-4" />
-          Nueva categoría
-        </Link>
-      </div>
+    <div className="adm-page">
+      <PageHeader
+        crumbs={[{ label: "Catálogo" }, { label: "Categorías" }]}
+        title="Categorías"
+        description="Ordenan el menú, merch y Navidad. Una categoría oculta no se ve en la tienda, pero sigue editable aquí."
+        actions={
+          <Link href="/admin/categorias/nueva" className="adm-btn adm-btn-primary">
+            <CirclePlus aria-hidden="true" className="h-[18px] w-[18px]" />
+            Nueva categoría
+          </Link>
+        }
+      />
 
-      {renderGroup("Menú", menu)}
-      {renderGroup("Merch", merch)}
-      {renderGroup("Navidad", navidad)}
+      {error && (
+        <div className="adm-alert warn" role="alert">
+          <TriangleAlert aria-hidden="true" className="mt-0.5 h-[18px] w-[18px] shrink-0" />
+          <div>
+            <b>No se pudieron cargar las categorías.</b>
+            {error.message}
+          </div>
+        </div>
+      )}
+
+      <div className="adm-stack">
+        {CATEGORY_KINDS.map((kind) => {
+          const list = rows.filter((c) => c.kind === kind);
+          return (
+            <section key={kind} className="adm-card overflow-hidden" aria-labelledby={`kind-${kind}`}>
+              <div className="adm-card-h">
+                <h2 id={`kind-${kind}`}>{KIND_LABEL_ES[kind]}</h2>
+                <span className="adm-sub">
+                  {list.length} categoría{list.length === 1 ? "" : "s"}
+                </span>
+              </div>
+              {list.length === 0 ? (
+                <EmptyState icon={Tags}>Sin categorías de {KIND_LABEL_ES[kind]}.</EmptyState>
+              ) : (
+                <ul>
+                  {list.map((c) => {
+                    const n = counts.get(c.slug) ?? 0;
+                    return (
+                      <li key={c.slug} className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-[color:var(--adm-line-2)] px-5 py-3 last:border-b-0">
+                        <div className="min-w-0 flex-1 basis-56">
+                          <Link href={`/admin/categorias/${c.slug}/editar`} className="font-semibold hover:text-[color:var(--adm-wine)] hover:underline">
+                            {c.label_es}
+                          </Link>
+                          <p className="adm-sub">
+                            {c.label_en || "Falta el nombre en inglés"} · posición {c.display_order} · {n} producto{n === 1 ? "" : "s"}
+                            {c.delivery_rule ? ` · ${RULE_LABEL[c.delivery_rule] ?? c.delivery_rule}` : ""}
+                          </p>
+                        </div>
+                        <CategoryVisibilityToggle slug={c.slug} label={c.label_es} initialVisible={c.visible !== false} />
+                        <Link href={`/admin/categorias/${c.slug}/editar`} className="adm-btn adm-btn-sm" aria-label={`Editar ${c.label_es}`}>
+                          Editar
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 }
