@@ -11,6 +11,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import ComboConfigurator from "./ComboConfigurator";
 import BoxConfigurator from "./BoxConfigurator";
 import HeladoConfigurator from "./HeladoConfigurator";
+import PromoRibbon from "@/components/ui/PromoRibbon";
+import PriceTag from "@/components/ui/PriceTag";
+import { effectivePrice, visibleTag } from "@/lib/promo";
 
 interface Props {
   products: Product[];
@@ -76,7 +79,7 @@ function ProductCard({
         giftCard: "none",
         giftCardPrice: 0,
       };
-      addBox(product, selection, product.price + count * boxRows[0].extra_price);
+      addBox(product, selection, effectivePrice(product) + count * boxRows[0].extra_price);
       setAdded(true);
       setTimeout(() => setAdded(false), 1500);
       return;
@@ -91,6 +94,7 @@ function ProductCard({
   };
 
   const hasPrice = product.price > 0;
+  const tag = visibleTag(product);
 
   return (
     <div className="group rounded-3xl overflow-hidden bg-white border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
@@ -105,14 +109,8 @@ function ProductCard({
             (e.target as HTMLImageElement).style.display = "none";
           }}
         />
-        {hasPrice && (
-          <div
-            className="absolute top-4 right-4 text-white font-black text-sm px-3 py-1.5 rounded-full shadow-lg"
-            style={{ backgroundColor: "#8b0031" }}
-          >
-            ${product.price.toLocaleString("es-CO")}
-          </div>
-        )}
+        {tag && <PromoRibbon tag={tag} />}
+        {hasPrice && <PriceTag product={product} variant="chip" className="absolute top-4 right-4" />}
         {!product.available && (
           <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
             <span className="text-white font-bold text-base bg-black/60 px-5 py-2 rounded-full">

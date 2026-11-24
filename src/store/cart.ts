@@ -7,6 +7,7 @@ import type {
   HeladoSelection,
   Product,
 } from "@/lib/types";
+import { effectivePrice } from "@/lib/promo";
 
 interface CartStore {
   items: CartItem[];
@@ -50,7 +51,7 @@ function boxSelectionKey(s: BoxSelection): string {
 }
 
 function lineUnitPrice(item: CartItem): number {
-  return item.unitPrice ?? item.product.price;
+  return item.unitPrice ?? effectivePrice(item.product);
 }
 
 export const useCartStore = create<CartStore>()(
@@ -74,7 +75,7 @@ export const useCartStore = create<CartStore>()(
           set({
             items: [
               ...items,
-              { product, quantity: 1, lineId, unitPrice: product.price },
+              { product, quantity: 1, lineId, unitPrice: effectivePrice(product) },
             ],
           });
         }

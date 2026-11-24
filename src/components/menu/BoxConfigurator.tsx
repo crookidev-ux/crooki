@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { X, Minus, Plus, Loader2 } from "lucide-react";
 import { useCartStore } from "@/store/cart";
 import { boxUnitPrice } from "@/lib/pricing";
+import { effectivePrice } from "@/lib/promo";
 import type { BoxSelection, GiftCardChoice, Product } from "@/lib/types";
 
 interface Props {
@@ -45,7 +46,7 @@ export default function BoxConfigurator({ box, productsById, locale, onClose }: 
         : 0;
 
   const unitPrice = boxUnitPrice(
-    box.price,
+    effectivePrice(box),
     cookieRows.map(({ row }) => ({
       quantity: qtyByCookie[row.cookie_id] ?? 0,
       extraPrice: row.extra_price,

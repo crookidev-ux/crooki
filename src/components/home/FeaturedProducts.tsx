@@ -6,6 +6,9 @@ import type { Product } from "@/lib/types";
 import { useCartStore } from "@/store/cart";
 import { ShoppingBag } from "lucide-react";
 import { Link } from "@/i18n/navigation";
+import PromoRibbon from "@/components/ui/PromoRibbon";
+import PriceTag from "@/components/ui/PriceTag";
+import { visibleTag } from "@/lib/promo";
 
 interface Props {
   products: Product[];
@@ -36,6 +39,7 @@ export default function FeaturedProducts({ products, locale }: Props) {
             const imageUrl =
               product.product_images?.[0]?.url ||
               `/images/${product.id.toLowerCase().replace(/\s+/g, "-")}.jpg`;
+            const tag = visibleTag(product);
 
             return (
               <div
@@ -51,6 +55,7 @@ export default function FeaturedProducts({ products, locale }: Props) {
                     sizes="(min-width: 1024px) 360px, (min-width: 640px) 50vw, 100vw"
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
                   />
+                  {tag && <PromoRibbon tag={tag} />}
                   {!product.available && (
                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                       <span className="text-white font-bold text-sm bg-black/60 px-4 py-2 rounded-full">
@@ -67,9 +72,7 @@ export default function FeaturedProducts({ products, locale }: Props) {
                     {description}
                   </p>
                   <div className="flex items-center justify-between">
-                    <span className="font-black text-xl" style={{ color: "#8b0031" }}>
-                      ${product.price.toLocaleString("es-CO")}
-                    </span>
+                    <PriceTag product={product} />
                     {product.available ? (
                       <button
                         onClick={() => addItem(product)}

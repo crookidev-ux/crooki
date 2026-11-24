@@ -7,6 +7,7 @@ import AboutSection from "@/components/home/AboutSection";
 import SocialSection from "@/components/home/SocialSection";
 import type { Product } from "@/lib/types";
 import { mockProducts } from "@/lib/mock-products";
+import { isSaleActive } from "@/lib/promo";
 import { parseActiveSeason, type SeasonId } from "@/lib/seasons";
 import { getActiveSeason } from "@/lib/seasons.data";
 import { getLatestSocialPosts } from "@/lib/social.data";
@@ -30,8 +31,14 @@ async function getProducts(): Promise<Product[]> {
       .select("*, product_images(*)")
       .eq("available", true);
     if (visibleSlugs.length > 0) query = query.in("category", visibleSlugs);
-    const { data } = await query.order("display_order").limit(6);
-    return data || mockProducts.slice(0, 6);
+    // All available products (the catalog is small) so a sale outside the
+    // first six still reaches the home: active sales go first, then display_order.
+    const { data } = await query.order("display_order");
+    if (!data) return mockProducts.slice(0, 6);
+    const now = new Date();
+    return [...(data as Product[])]
+      .sort((a, b) => Number(isSaleActive(b, now)) - Number(isSaleActive(a, now)))
+      .slice(0, 6);
   } catch {
     return mockProducts.slice(0, 6);
   }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { effectivePrice } from "@/lib/promo";
 import { useTranslations } from "next-intl";
 import { useCartStore } from "@/store/cart";
 import { useRouter, Link } from "@/i18n/navigation";
@@ -763,7 +764,7 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
                 {items.map((item) => {
                   const { product, quantity, lineId, combo, box, helado, unitPrice } = item;
                   const name = locale === "en" ? product.name_en : product.name_es;
-                  const linePrice = unitPrice ?? product.price;
+                  const linePrice = unitPrice ?? effectivePrice(product);
                   return (
                     <div key={lineId} className="flex justify-between items-start gap-2 text-sm">
                       <div className="text-gray-700 leading-tight min-w-0">

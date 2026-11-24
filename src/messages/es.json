@@ -320,5 +320,16 @@
     "subtitle": "Lo que está pasando hoy en el Bake Bar. Toca un video para verlo con sonido.",
     "open": "Abrir el video en {network}",
     "view_on": "Ver en {network}"
+  },
+  "promo": {
+    "tags": {
+      "black_friday": "Black Friday",
+      "oferta": "Oferta",
+      "navidad": "Navidad",
+      "nuevo": "Nuevo",
+      "mas_vendido": "Más vendido",
+      "edicion_limitada": "Edición limitada"
+    },
+    "was_now": "Antes {was}, ahora {now}"
   }
 }

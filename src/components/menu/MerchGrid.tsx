@@ -6,6 +6,9 @@ import { Plus, Check } from "lucide-react";
 import { useState } from "react";
 import { useCartStore } from "@/store/cart";
 import type { Product } from "@/lib/types";
+import PromoRibbon from "@/components/ui/PromoRibbon";
+import PriceTag from "@/components/ui/PriceTag";
+import { visibleTag } from "@/lib/promo";
 
 interface Props {
   products: Product[];
@@ -23,6 +26,7 @@ function MerchCard({ product, locale }: { product: Product; locale: string }) {
     product.product_images?.[0]?.url ||
     `/images/${product.id.toLowerCase().replace(/\s+/g, "-")}.jpg`;
   const hasPrice = product.price > 0;
+  const tag = visibleTag(product);
 
   const handleAdd = () => {
     addItem(product);
@@ -43,14 +47,8 @@ function MerchCard({ product, locale }: { product: Product; locale: string }) {
             (e.target as HTMLImageElement).style.display = "none";
           }}
         />
-        {hasPrice && (
-          <div
-            className="absolute top-4 right-4 text-white font-black text-sm px-3 py-1.5 rounded-full shadow-lg"
-            style={{ backgroundColor: "#8b0031" }}
-          >
-            ${product.price.toLocaleString("es-CO")}
-          </div>
-        )}
+        {tag && <PromoRibbon tag={tag} />}
+        {hasPrice && <PriceTag product={product} variant="chip" className="absolute top-4 right-4" />}
       </div>
       <div className="p-6">
         <h3 className="font-black text-2xl mb-2 leading-tight">{name}</h3>

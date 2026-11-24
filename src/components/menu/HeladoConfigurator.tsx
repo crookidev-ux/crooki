@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { X, Minus, Plus, Loader2 } from "lucide-react";
 import { useCartStore } from "@/store/cart";
 import { heladoUnitPrice } from "@/lib/pricing";
+import { effectivePrice } from "@/lib/promo";
 import type { HeladoSelection, Product } from "@/lib/types";
 
 interface Props {
@@ -43,7 +44,7 @@ export default function HeladoConfigurator({ helado, productsById, locale, onClo
   );
 
   const unitPrice = heladoUnitPrice(
-    helado.price,
+    effectivePrice(helado),
     salsaRows.map(({ row }) => ({
       quantity: salsaQty[row.salsa_id] ?? 0,
       extraPrice: row.extra_price,

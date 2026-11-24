@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { effectivePrice } from "@/lib/promo";
 import { useCartStore } from "@/store/cart";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
@@ -73,7 +74,7 @@ export default function CartDrawer() {
                 const imageUrl =
                   product.product_images?.[0]?.url ||
                   `/images/${product.id}.jpg`;
-                const linePrice = unitPrice ?? product.price;
+                const linePrice = unitPrice ?? effectivePrice(product);
 
                 return (
                   <div

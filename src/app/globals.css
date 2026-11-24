@@ -226,3 +226,12 @@
   .wa-beat { animation: wa-beat 2.4s ease-in-out infinite; }
   .wa-ring { animation: wa-ring 2.4s ease-out infinite; }
 }
+
+/* Black Friday ribbon: a slow gold sheen across the black band (PromoRibbon.tsx) */
+@keyframes promo-sheen {
+  0%, 70% { transform: translateX(-120%) skewX(-20deg); }
+  100% { transform: translateX(320%) skewX(-20deg); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .promo-sheen { animation: promo-sheen 4.5s ease-in-out infinite; }
+}
