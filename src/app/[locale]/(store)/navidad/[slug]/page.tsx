@@ -12,6 +12,8 @@ import { visibleTag } from "@/lib/promo";
 import type { Product } from "@/lib/types";
 import PromoRibbon from "@/components/ui/PromoRibbon";
 import PriceTag from "@/components/ui/PriceTag";
+import Crumbs from "@/components/layout/Crumbs";
+import SeasonDecor from "@/components/seasons/SeasonDecor";
 import ProductGallery from "@/components/navidad/ProductGallery";
 import AddToOrder from "@/components/navidad/AddToOrder";
 import NavidadCard from "@/components/navidad/NavidadCard";
@@ -94,16 +96,22 @@ export default async function NavidadProductPage({ params }: { params: Params })
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
 
-      <div className="mx-auto max-w-6xl px-4 pb-16 pt-6 md:pb-24 md:pt-10">
-        <nav aria-label={t("breadcrumb")} className="mb-6 text-sm">
-          <ol className="flex flex-wrap items-center gap-1.5 text-gray-500">
-            <li><Link href="/" className="hover:text-[#8b0031]">{t("home")}</Link></li>
+      {/* Christmas strip: snow only (the hanging ornaments would cross the breadcrumb) */}
+      <div className="relative overflow-hidden text-white [&_.sz-sway]:hidden" style={{ backgroundColor: "#8b0031" }}>
+        <Crumbs className="opacity-30" />
+        <SeasonDecor season="navidad" part="ambient" />
+        <nav aria-label={t("breadcrumb")} className="relative mx-auto max-w-6xl px-4 py-5 text-sm md:py-6">
+          <ol className="flex flex-wrap items-center gap-1.5 text-white/80">
+            <li><Link href="/" className="inline-flex min-h-6 items-center hover:text-[#f3c78b]">{t("home")}</Link></li>
             <li aria-hidden="true"><ChevronRight className="h-3.5 w-3.5" /></li>
-            <li><Link href="/navidad" className="hover:text-[#8b0031]">{tNav("navidad")}</Link></li>
+            <li><Link href="/navidad" className="inline-flex min-h-6 items-center hover:text-[#f3c78b]">{tNav("navidad")}</Link></li>
             <li aria-hidden="true"><ChevronRight className="h-3.5 w-3.5" /></li>
-            <li aria-current="page" className="font-semibold text-gray-800 line-clamp-1">{name}</li>
+            <li aria-current="page" className="font-semibold text-white line-clamp-1">{name}</li>
           </ol>
         </nav>
+      </div>
+
+      <div className="mx-auto max-w-6xl px-4 pb-16 pt-8 md:pb-24 md:pt-12">
 
         <div className="grid items-start gap-8 md:grid-cols-2 md:gap-12 lg:gap-16">
           <div className="md:sticky md:top-24">

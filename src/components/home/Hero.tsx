@@ -1,13 +1,21 @@
 import Image from "next/image";
 import { getTranslations } from "next-intl/server";
-import { Cookie, MapPin } from "lucide-react";
+import { Cookie, Gift, MapPin } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import Crumbs from "@/components/layout/Crumbs";
 import SeasonDecor from "@/components/seasons/SeasonDecor";
 import SeasonIcon from "@/components/seasons/SeasonIcon";
 import type { SeasonId } from "@/lib/seasons";
 
-export default async function Hero({ locale, season }: { locale: string; season: SeasonId | null }) {
+export default async function Hero({
+  locale,
+  season,
+  showNavidad = false,
+}: {
+  locale: string;
+  season: SeasonId | null;
+  showNavidad?: boolean;
+}) {
   const t = await getTranslations({ locale, namespace: "hero" });
   const ts = await getTranslations({ locale, namespace: "seasons" });
 
@@ -53,12 +61,24 @@ export default async function Hero({ locale, season }: { locale: string; season:
             >
               {t("cta_order")} →
             </Link>
-            <Link
-              href="/menu"
-              className="inline-flex items-center justify-center border-2 border-white/80 text-white font-bold text-lg px-8 py-4 rounded-full transition-all hover:bg-white/10"
-            >
-              {t("cta_menu")}
-            </Link>
+            {/* While the Christmas catalog is visible, the secondary button (it
+                duplicated «Pedir ahora» → /menu) announces it instead. */}
+            {showNavidad ? (
+              <Link
+                href="/navidad"
+                className="inline-flex items-center justify-center gap-2 border-2 border-[#f3c78b] text-white font-bold text-lg px-8 py-4 rounded-full transition-all hover:bg-white/10"
+              >
+                <Gift className="w-5 h-5 text-[#f3c78b]" aria-hidden="true" />
+                {t("cta_navidad")}
+              </Link>
+            ) : (
+              <Link
+                href="/menu"
+                className="inline-flex items-center justify-center border-2 border-white/80 text-white font-bold text-lg px-8 py-4 rounded-full transition-all hover:bg-white/10"
+              >
+                {t("cta_menu")}
+              </Link>
+            )}
           </div>
 
           <p className="mt-8 inline-flex items-center gap-2 text-sm text-white/75">

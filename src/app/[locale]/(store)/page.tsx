@@ -11,6 +11,7 @@ import { isSaleActive } from "@/lib/promo";
 import { parseActiveSeason, type SeasonId } from "@/lib/seasons";
 import { getActiveSeason } from "@/lib/seasons.data";
 import { getLatestSocialPosts } from "@/lib/social.data";
+import { hasVisibleNavidad } from "@/lib/navidad";
 
 async function getProducts(): Promise<Product[]> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("your_")) {
@@ -75,17 +76,18 @@ export default async function HomePage({
 }) {
   const { locale } = await params;
   const { temporada } = await searchParams;
-  const [products, activeSeason, socialPosts] = await Promise.all([
+  const [products, activeSeason, socialPosts, showNavidad] = await Promise.all([
     getProducts(),
     getActiveSeason(),
     getLatestSocialPosts(),
+    hasVisibleNavidad(),
   ]);
   const preview = previewSeason(temporada);
   const season = preview === undefined ? activeSeason : preview;
 
   return (
     <>
-      <Hero locale={locale} season={season} />
+      <Hero locale={locale} season={season} showNavidad={showNavidad} />
       <FeaturedProducts products={products} locale={locale} />
       <AboutSection locale={locale} />
       <SocialSection locale={locale} posts={socialPosts} />

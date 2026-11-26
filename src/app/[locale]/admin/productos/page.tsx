@@ -7,6 +7,7 @@ import { filterProducts, groupByCategory, parseProductFilter, PRODUCT_FILTERS, m
 import { effectivePrice, isSaleActive, visibleTag } from "@/lib/promo";
 import { CATEGORY_KINDS, KIND_LABEL_ES, parseKind, type CategoryRow, type Product } from "@/lib/types";
 import ProductAvailableToggle from "@/components/admin/ProductAvailableToggle";
+import CategoryVisibilityToggle from "@/components/admin/CategoryVisibilityToggle";
 import { EmptyState, PageHeader, money } from "@/components/admin/ui";
 
 type ProductRow = Product & { product_images: { id: string; url: string; display_order: number }[] };
@@ -136,7 +137,7 @@ export default async function AdminProductsPage({
                   <span className="n">
                     {list.length} producto{list.length === 1 ? "" : "s"}
                   </span>
-                  {c.visible === false && <span className="adm-badge">Oculta en la tienda</span>}
+                  <CategoryVisibilityToggle slug={c.slug} label={c.label_es} initialVisible={c.visible !== false} />
                   <Link
                     href={`/admin/productos/nuevo?kind=${kind}&category=${c.slug}`}
                     className="adm-btn adm-btn-sm"

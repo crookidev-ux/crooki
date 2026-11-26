@@ -848,7 +848,8 @@
   .adm-rows-head.products,
   .adm-row.product {
     display: grid;
-    grid-template-columns: minmax(0, 2fr) 132px minmax(0, 1.3fr) 104px 96px;
+    /* switch column: 44px switch + 8px gap + 70px label */
+    grid-template-columns: minmax(0, 2fr) 132px minmax(0, 1.3fr) 124px 96px;
     gap: 12px;
   }
   .adm-rows-head.products {

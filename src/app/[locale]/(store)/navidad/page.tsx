@@ -6,6 +6,8 @@ import { Link } from "@/i18n/navigation";
 import { alternatesFor } from "@/lib/seo";
 import { loadNavidadCategories, loadNavidadProducts } from "@/lib/navidad";
 import Crumbs from "@/components/layout/Crumbs";
+import SeasonDecor from "@/components/seasons/SeasonDecor";
+import SeasonIcon from "@/components/seasons/SeasonIcon";
 import NavidadCard from "@/components/navidad/NavidadCard";
 
 export async function generateMetadata({
@@ -40,9 +42,15 @@ export default async function NavidadPage({
 
   return (
     <div>
-      <div className="relative overflow-hidden px-4 py-20 text-center text-white" style={{ backgroundColor: "#8b0031" }}>
-        <Crumbs className="opacity-70" />
-        <p className="relative mb-4 text-xs font-bold uppercase tracking-[0.3em] text-[#f3c78b]">{t("eyebrow")}</p>
+      <div className="relative overflow-hidden px-4 py-20 text-center text-white lg:pt-32" style={{ backgroundColor: "#8b0031" }}>
+        {/* Always the Christmas decoration here, whatever season the home shows.
+            lg:pt-32 keeps the centered text below the hanging ornaments. */}
+        <Crumbs className="opacity-30" />
+        <SeasonDecor season="navidad" part="ambient" />
+        <p className="relative mb-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.3em] text-[#f3c78b]">
+          <SeasonIcon season="navidad" className="h-4 w-4" />
+          {t("eyebrow")}
+        </p>
         <h1 className="relative mb-4 text-5xl font-black md:text-6xl">{t("title")}</h1>
         <p className="relative mx-auto max-w-xl text-lg text-white/80">{t("subtitle")}</p>
       </div>
