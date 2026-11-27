@@ -1,5 +1,6 @@
 import { requireAdmin } from "@/lib/admin-auth";
 import ProductFormClient from "@/components/admin/ProductFormClient";
+import { isMissingTable } from "@/lib/missing-table";
 import { parseKind, type CategoryRow } from "@/lib/types";
 
 export default async function NewProductPage({
@@ -13,7 +14,7 @@ export default async function NewProductPage({
   const { supabase } = await requireAdmin(locale);
   const { kind, category } = await searchParams;
 
-  const [{ data: categories }, { data: galletas }, { data: salsas }] = await Promise.all([
+  const [{ data: categories }, { data: galletas }, { data: salsas }, optionsProbe] = await Promise.all([
     supabase.from("categories").select("*").order("kind").order("display_order"),
     supabase
       .from("products")
@@ -25,7 +26,10 @@ export default async function NewProductPage({
       .select("id, name_es, name_en, price")
       .eq("category", "salsas")
       .order("display_order"),
+    // Does product_options exist yet (migration 20261126000000)?
+    supabase.from("product_options").select("id").limit(1),
   ]);
+  if (optionsProbe.error && !isMissingTable(optionsProbe.error)) throw optionsProbe.error;
 
   return (
     <ProductFormClient
@@ -36,6 +40,7 @@ export default async function NewProductPage({
       initialCategory={category}
       allGalletas={galletas ?? []}
       allSalsas={salsas ?? []}
+      optionsSupported={!optionsProbe.error}
     />
   );
 }

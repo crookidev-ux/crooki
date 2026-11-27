@@ -5,7 +5,7 @@ import { useMemo, useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Link, useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
-import { Check, ChevronLeft, ChevronRight, Cookie, ExternalLink, ImagePlus, Loader2, Trash2, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Cookie, ExternalLink, ImagePlus, Loader2, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   CATEGORY_KINDS,
@@ -17,6 +17,7 @@ import {
 } from "@/lib/types";
 import { isValidSlug, slugify } from "@/lib/slug";
 import { MAX_PRODUCT_IMAGES, fitPhotos, moveItem } from "@/lib/product-photos";
+import { parseOptionDrafts, type OptionDraft } from "@/lib/product-options";
 import {
   PROMO_TAGS,
   bogotaLocalToIso,
@@ -47,7 +48,19 @@ interface Props {
   // pass the full lists; we render checkboxes + per-row extra-price inputs.
   allGalletas?: ReferenceProduct[];
   allSalsas?: ReferenceProduct[];
+  /** false until migration 20261126000000 creates product_options: the section stays hidden. */
+  optionsSupported?: boolean;
 }
+
+const newOptionDraft = (): OptionDraft => ({
+  id: crypto.randomUUID(),
+  label_es: "",
+  label_en: "",
+  price: "",
+  min_qty: "1",
+  bulk_min_qty: "",
+  bulk_price: "",
+});
 
 // Accepted picks (PNG too); compressImage turns them into webp/jpeg, the only
 // types the `product-images` bucket stores, at most 1 MB
@@ -172,6 +185,7 @@ export default function ProductFormClient({
   initialCategory,
   allGalletas = [],
   allSalsas = [],
+  optionsSupported = false,
 }: Props) {
   const tPromo = useTranslations("promo");
   const router = useRouter();
@@ -220,6 +234,8 @@ export default function ProductFormClient({
     sale_price: product?.sale_price != null ? String(product.sale_price) : "",
     sale_ends_local: isoToBogotaLocal(product?.sale_ends_at),
     promo_tag: (product?.promo_tag ?? "") as PromoTag | "",
+    note_es: product?.note_es ?? "",
+    note_en: product?.note_en ?? "",
   });
 
   // Christmas products have their own page: /navidad/<slug>. The slug follows
@@ -228,6 +244,29 @@ export default function ProductFormClient({
   const [slugInput, setSlugInput] = useState(product?.slug ?? "");
   const [slugTouched, setSlugTouched] = useState(!!product?.slug);
   const slug = slugTouched ? slugInput : slugify(form.name_es);
+
+  // Options («Caja x2», «Sin empaque»): Christmas product pages only. With
+  // options the checkout charges only from them (src/lib/checkout/price-cart.ts);
+  // products.price is saved as the cheapest one («Desde») and sales are off.
+  const optionsEnabled = isNavidad && optionsSupported;
+  const [optionDrafts, setOptionDrafts] = useState<OptionDraft[]>(() =>
+    (product?.product_options ?? []).map((o) => ({
+      id: o.id,
+      label_es: o.label_es,
+      label_en: o.label_en,
+      price: String(o.price),
+      min_qty: String(o.min_qty),
+      bulk_min_qty: o.bulk_min_qty == null ? "" : String(o.bulk_min_qty),
+      bulk_price: o.bulk_price == null ? "" : String(o.bulk_price),
+    })),
+  );
+  // Options already in the database (to know whether the price can be the «Desde» yet).
+  const [savedOptionCount, setSavedOptionCount] = useState(product?.product_options?.length ?? 0);
+  const hasOptions = optionsEnabled && optionDrafts.length > 0;
+  const optionPrices = optionDrafts.map((d) => Number(d.price)).filter((n) => Number.isInteger(n) && n > 0);
+  const fromPrice = optionPrices.length > 0 ? Math.min(...optionPrices) : 0;
+  const updateOption = (i: number, patch: Partial<OptionDraft>) =>
+    setOptionDrafts((rows) => rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
 
   const isCombo = form.category === "combos";
   const isBox = form.category === "cajas";
@@ -486,6 +525,25 @@ export default function ProductFormClient({
     return null;
   };
 
+  // Options: upsert first, then delete the removed ones, so the product never
+  // goes a moment without its options (it would sell at the «Desde» price).
+  const saveOptions = async (productId: string, rows: ReturnType<typeof parseOptionDrafts>): Promise<string | null> => {
+    // Outside navidad `rows` is empty, so a product moved out of it loses its
+    // options instead of keeping orphans (audit B2).
+    if (!optionsSupported || !rows.ok) return null;
+    const supabase = createClient();
+    if (rows.rows.length > 0) {
+      const { error } = await supabase.from("product_options").upsert(rows.rows.map((r) => ({ ...r, product_id: productId })));
+      if (error) return `las presentaciones: ${error.message}`;
+    }
+    let del = supabase.from("product_options").delete().eq("product_id", productId);
+    if (rows.rows.length > 0) del = del.not("id", "in", `(${rows.rows.map((r) => r.id).join(",")})`);
+    const { error: delErr } = await del;
+    if (delErr) return `las presentaciones quitadas: ${delErr.message}`;
+    setSavedOptionCount(rows.rows.length);
+    return null;
+  };
+
   const listHref = `/admin/productos?kind=${kind}`;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -495,8 +553,14 @@ export default function ProductFormClient({
       toast.error("El nombre en español es obligatorio.");
       return;
     }
-    const price = parseFloat(form.price) || 0;
-    const salePrice = form.sale_price.trim() === "" ? null : Number(form.sale_price);
+    const optionRows = parseOptionDrafts(hasOptions ? optionDrafts : [], savedId ?? "");
+    if (!optionRows.ok) {
+      toast.error(optionRows.error);
+      return;
+    }
+    const price = hasOptions ? fromPrice : parseFloat(form.price) || 0;
+    // Sales do not apply to products with options.
+    const salePrice = hasOptions || form.sale_price.trim() === "" ? null : Number(form.sale_price);
     if (salePrice !== null && !(Number.isInteger(salePrice) && salePrice >= 1 && salePrice < price)) {
       toast.error("El precio de oferta debe ser mayor que 0 y menor que el precio normal.");
       return;
@@ -541,6 +605,13 @@ export default function ProductFormClient({
       // Only Christmas products carry a slug, so menu/merch saves keep working
       // on a database without the navidad migration.
       if (isNavidad) productData.slug = slug;
+      if (optionsEnabled) {
+        productData.note_es = form.note_es.trim() || null;
+        productData.note_en = form.note_en.trim() || null;
+        // Until the options are stored, keep the product at 0 («Consultar»):
+        // if saving them fails it must not be sold at the «Desde» price.
+        if (hasOptions && savedOptionCount === 0) productData.price = 0;
+      }
       if (isBox) {
         const count = parseInt(boxCookieCount, 10);
         productData.box_cookie_count = Number.isFinite(count) && count >= 2 ? count : 2;
@@ -575,7 +646,11 @@ export default function ProductFormClient({
       setUploadingImages(true);
       const photoFailures = await savePhotos(productId);
       setUploadingImages(false);
-      const configError = await saveConfig(productId);
+      const configError = (await saveConfig(productId)) ?? (await saveOptions(productId, optionRows));
+      if (!configError && hasOptions && productData.price !== price) {
+        const { error } = await supabase.from("products").update({ price }).eq("id", productId);
+        if (error) throw error;
+      }
 
       if (photoFailures === 0 && !configError) {
         toast.success(mode === "create" ? "Producto creado" : "Cambios guardados");
@@ -756,6 +831,25 @@ export default function ProductFormClient({
                       Se muestra en la tarjeta del menú. {form.description_es.length} caracteres.
                     </span>
                   </div>
+                  {optionsEnabled && (
+                    <div className="adm-field">
+                      <label htmlFor="note_es">Nota de pedidos grandes</label>
+                      <input
+                        id="note_es"
+                        type="text"
+                        value={form.note_es}
+                        onChange={(e) => setForm({ ...form, note_es: e.target.value })}
+                        className="adm-input"
+                        placeholder="Descuento a partir de 12 cajas, escríbenos"
+                        maxLength={300}
+                        autoComplete="off"
+                        aria-describedby="note_es_help"
+                      />
+                      <span id="note_es_help" className="adm-help">
+                        Opcional. Sale debajo del botón «Agregar al pedido», con un botón de WhatsApp.
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div role="tabpanel" id="panel-en" aria-labelledby="tab-en" hidden={lang !== "en"}>
                   <div className="adm-field">
@@ -785,6 +879,21 @@ export default function ProductFormClient({
                       placeholder="Soft dough cookie with salted caramel filling…"
                     />
                   </div>
+                  {optionsEnabled && (
+                    <div className="adm-field">
+                      <label htmlFor="note_en">Nota de pedidos grandes en inglés</label>
+                      <input
+                        id="note_en"
+                        type="text"
+                        value={form.note_en}
+                        onChange={(e) => setForm({ ...form, note_en: e.target.value })}
+                        className="adm-input"
+                        placeholder="Discount from 12 boxes, message us"
+                        maxLength={300}
+                        autoComplete="off"
+                      />
+                    </div>
+                  )}
                 </div>
                 {enMissing && lang === "es" && (
                   <p className="adm-help mt-2">
@@ -810,15 +919,22 @@ export default function ProductFormClient({
                         id="price"
                         type="number"
                         inputMode="numeric"
-                        value={form.price}
+                        value={hasOptions ? String(fromPrice) : form.price}
                         onChange={(e) => setForm({ ...form, price: e.target.value })}
                         className="adm-input"
                         placeholder="18000"
                         min="0"
                         step="1"
                         required
+                        readOnly={hasOptions}
+                        aria-describedby={hasOptions ? "price_help" : undefined}
                       />
                     </div>
+                    {hasOptions && (
+                      <span id="price_help" className="adm-help">
+                        Sale de la presentación más barata («Desde»). Se cobra el precio de cada presentación.
+                      </span>
+                    )}
                   </div>
                   <div className="adm-field">
                     <label htmlFor="sale_price">Precio de oferta</label>
@@ -828,7 +944,8 @@ export default function ProductFormClient({
                         id="sale_price"
                         type="number"
                         inputMode="numeric"
-                        value={form.sale_price}
+                        disabled={hasOptions}
+                        value={hasOptions ? "" : form.sale_price}
                         onChange={(e) => setForm({ ...form, sale_price: e.target.value })}
                         className="adm-input"
                         min="1"
@@ -837,14 +954,16 @@ export default function ProductFormClient({
                       />
                     </div>
                     <span id="sale_price_help" className="adm-help">
-                      {discount !== null ? `${discount} % de descuento. ` : ""}Vacío = sin oferta. Debe ser menor que el
-                      precio normal.
+                      {hasOptions
+                        ? "Las ofertas no aplican a productos con presentaciones."
+                        : `${discount !== null ? `${discount} % de descuento. ` : ""}Vacío = sin oferta. Debe ser menor que el precio normal.`}
                     </span>
                   </div>
                   <div className="adm-field">
                     <label htmlFor="sale_ends">La oferta termina</label>
                     <input
                       id="sale_ends"
+                      disabled={hasOptions}
                       type="datetime-local"
                       lang="es-CO"
                       value={form.sale_ends_local}
@@ -880,6 +999,152 @@ export default function ProductFormClient({
                 )}
               </div>
             </section>
+
+            {/* Presentaciones y precios (Navidad) */}
+            {optionsEnabled && (
+              <section className="adm-card adm-cq" aria-labelledby="sec-options">
+                <div className="adm-card-h">
+                  <h2 id="sec-options">Presentaciones y precios</h2>
+                  <span className="adm-sub ml-auto">
+                    {optionDrafts.length === 0 ? "Sin presentaciones" : plural(optionDrafts.length, "presentación", "presentaciones")}
+                  </span>
+                </div>
+                <div className="adm-card-b">
+                  <p className="adm-help mb-3">
+                    Ej.: «Caja x2», «Caja x4». El cliente elige una y se le cobra su precio. Con un mínimo, la cantidad no
+                    baja de ahí; con precio por cantidad, el precio por unidad baja desde esa cantidad. Sin presentaciones
+                    se cobra el precio normal.
+                  </p>
+                  {optionDrafts.length > 0 && (
+                    <ol className="flex flex-col gap-3">
+                      {optionDrafts.map((d, i) => (
+                        <li key={d.id} className="rounded-xl border border-[var(--adm-line)] p-3">
+                          <div className="mb-2 flex items-center gap-2">
+                            <strong className="text-sm">Presentación {i + 1}</strong>
+                            <button
+                              type="button"
+                              className="adm-btn adm-btn-ghost adm-btn-sm ml-auto"
+                              onClick={() => setOptionDrafts((rows) => rows.filter((_, j) => j !== i))}
+                              aria-label={`Quitar la presentación ${i + 1}`}
+                            >
+                              <Trash2 aria-hidden="true" className="h-4 w-4" />
+                              Quitar
+                            </button>
+                          </div>
+                          <div className="adm-row2">
+                            <div className="adm-field">
+                              <label htmlFor={`opt-es-${i}`}>Nombre *</label>
+                              <input
+                                id={`opt-es-${i}`}
+                                type="text"
+                                className="adm-input"
+                                value={d.label_es}
+                                maxLength={120}
+                                onChange={(e) => updateOption(i, { label_es: e.target.value })}
+                                placeholder="Caja x2"
+                                autoComplete="off"
+                              />
+                            </div>
+                            <div className="adm-field">
+                              <label htmlFor={`opt-en-${i}`}>Nombre en inglés</label>
+                              <input
+                                id={`opt-en-${i}`}
+                                type="text"
+                                className="adm-input"
+                                value={d.label_en}
+                                maxLength={120}
+                                onChange={(e) => updateOption(i, { label_en: e.target.value })}
+                                placeholder="Box of 2"
+                                autoComplete="off"
+                              />
+                            </div>
+                          </div>
+                          <div className="adm-row2">
+                            <div className="adm-field">
+                              <label htmlFor={`opt-price-${i}`}>Precio por unidad *</label>
+                              <div className="adm-prefix">
+                                <span aria-hidden="true">$</span>
+                                <input
+                                  id={`opt-price-${i}`}
+                                  type="number"
+                                  inputMode="numeric"
+                                  min="1"
+                                  step="1"
+                                  className="adm-input"
+                                  value={d.price}
+                                  onChange={(e) => updateOption(i, { price: e.target.value })}
+                                  placeholder="23000"
+                                />
+                              </div>
+                            </div>
+                            <div className="adm-field">
+                              <label htmlFor={`opt-min-${i}`}>Mínimo de unidades</label>
+                              <input
+                                id={`opt-min-${i}`}
+                                type="number"
+                                inputMode="numeric"
+                                min="1"
+                                step="1"
+                                className="adm-input"
+                                value={d.min_qty}
+                                onChange={(e) => updateOption(i, { min_qty: e.target.value })}
+                                placeholder="1"
+                              />
+                            </div>
+                          </div>
+                          <div className="adm-row2">
+                            <div className="adm-field">
+                              <label htmlFor={`opt-bulkq-${i}`}>Precio por cantidad: desde (unidades)</label>
+                              <input
+                                id={`opt-bulkq-${i}`}
+                                type="number"
+                                inputMode="numeric"
+                                min="2"
+                                step="1"
+                                className="adm-input"
+                                value={d.bulk_min_qty}
+                                onChange={(e) => updateOption(i, { bulk_min_qty: e.target.value })}
+                                placeholder="12"
+                                aria-describedby={`opt-bulk-help-${i}`}
+                              />
+                            </div>
+                            <div className="adm-field">
+                              <label htmlFor={`opt-bulkp-${i}`}>Precio por unidad desde esa cantidad</label>
+                              <div className="adm-prefix">
+                                <span aria-hidden="true">$</span>
+                                <input
+                                  id={`opt-bulkp-${i}`}
+                                  type="number"
+                                  inputMode="numeric"
+                                  min="1"
+                                  step="1"
+                                  className="adm-input"
+                                  value={d.bulk_price}
+                                  onChange={(e) => updateOption(i, { bulk_price: e.target.value })}
+                                  placeholder="8900"
+                                  aria-describedby={`opt-bulk-help-${i}`}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          <span id={`opt-bulk-help-${i}`} className="adm-help">
+                            Opcional: déjalos vacíos si no hay precio por cantidad.
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                  <button
+                    type="button"
+                    className="adm-btn mt-3"
+                    onClick={() => setOptionDrafts((rows) => [...rows, newOptionDraft()])}
+                  >
+                    <Plus aria-hidden="true" className="h-[18px] w-[18px]" />
+                    Agregar presentación
+                  </button>
+                </div>
+              </section>
+            )}
 
             {/* Fotos */}
             <section className="adm-card" aria-labelledby="sec-photos">

@@ -42,9 +42,11 @@ export interface LineNameSelection {
     giftCard: GiftCardChoice;
   };
   helado?: { salsas: { salsaName: string; quantity: number }[] };
+  option?: { label: string };
 }
 
 export function lineDisplayName(baseName: string, sel: LineNameSelection): string {
+  if (sel.option) return `${baseName.trim()} · ${sel.option.label.trim()}`;
   if (sel.combo) {
     const parts: string[] = [sel.combo.cookieName];
     if (sel.combo.includedSalsaName) parts.push(`Salsa ${sel.combo.includedSalsaName}`);
@@ -68,4 +70,19 @@ export function lineDisplayName(baseName: string, sel: LineNameSelection): strin
     return `${baseName} · ${salsaParts.join(" + ")}`;
   }
   return baseName;
+}
+
+/** Price rule of a product option (product_options): a lower unit price from bulk_min_qty. */
+export interface OptionPricing {
+  price: number;
+  min_qty: number;
+  bulk_min_qty?: number | null;
+  bulk_price?: number | null;
+}
+
+/** Unit price of an option for a line of `quantity` units. */
+export function optionUnitPrice(opt: OptionPricing, quantity: number): number {
+  return opt.bulk_min_qty != null && opt.bulk_price != null && quantity >= opt.bulk_min_qty
+    ? opt.bulk_price
+    : opt.price;
 }

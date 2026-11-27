@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { priceCart, type Catalog, type CatalogProduct } from "./price-cart.ts";
-import { parseCheckoutInput, type CheckoutInput } from "./schema.ts";
+import { priceCart, type Catalog, type CatalogOption, type CatalogProduct } from "./price-cart.ts";
+import { parseCheckoutInput, type CheckoutInput, type CheckoutItemInput } from "./schema.ts";
+import { BOLD_MIN_AMOUNT } from "../bold.ts";
 
 function product(p: Partial<CatalogProduct> & { id: string }): CatalogProduct {
   return {
@@ -625,4 +626,214 @@ test("navidad product: plain line, any quantity, follows its category delivery r
   assert.equal(far.ok, false);
   const pickup = priceCart(input({ items, fulfillment: "pickup", delivery: undefined }), catalog);
   assert.equal(pickup.ok, true);
+});
+
+// ── Product options (product_options): modality, minimum and bulk step ──
+// docs/superpowers/specs/2026-11-26-opciones-y-precios-por-volumen.md §4
+
+function option(o: Partial<CatalogOption> & { id: string }): CatalogOption {
+  return { label_es: `ES ${o.id}`, label_en: `EN ${o.id}`, price: 10000, min_qty: 1, bulk_min_qty: null, bulk_price: null, ...o };
+}
+
+function optionCatalog(): Catalog {
+  const catalog = makeCatalog();
+  const navidad = (p: Partial<CatalogProduct> & { id: string }) =>
+    catalog.products.set(p.id, product({ category: "share-box", ...p }));
+  // products.price is the cheapest option ("Desde"), never what is charged.
+  navidad({ id: "chocobomba", price: 8700, name_es: "Chocobomba (pedido desde 12)", name_en: "Hot chocolate bomb" });
+  navidad({ id: "chocobombas", price: 23000, name_es: "Caja de chocobombas", name_en: "Hot chocolate bomb box" });
+  navidad({ id: "brownie", price: 10000, name_es: "Christmas brownie ", name_en: "Christmas brownie" });
+  navidad({ id: "rota", price: 9000 });
+  catalog.options = new Map([
+    ["chocobomba", [
+      option({ id: "empaque", label_es: "Rellena decorada con empaque e instrucciones", label_en: "With packaging", price: 10000, min_qty: 12 }),
+      option({ id: "sin-empaque", label_es: "Sin empaque ni instrucciones", label_en: "No packaging", price: 8700, min_qty: 12 }),
+    ]],
+    ["chocobombas", [
+      option({ id: "x2", label_es: "Caja x2", price: 23000 }),
+      option({ id: "x4", label_es: "Caja x4", price: 42000 }),
+      option({ id: "x6", label_es: "Caja x6", price: 62500 }),
+      option({ id: "x8", label_es: "Caja x8", price: 81900 }),
+    ]],
+    ["brownie", [option({ id: "unidad", label_es: "Unidad", label_en: "Each", price: 10000, bulk_min_qty: 12, bulk_price: 8900 })]],
+    // Every option has unusable money, so the product cannot be sold.
+    ["rota", [option({ id: "mala", price: 10000, bulk_min_qty: 12, bulk_price: 12000 }), option({ id: "cero", price: 0 })]],
+  ]);
+  return catalog;
+}
+
+const pickupWith = (items: CheckoutItemInput[]) => input({ fulfillment: "pickup", delivery: undefined, items });
+
+function rejected(r: ReturnType<typeof priceCart>, status: 400 | 409) {
+  assert.equal(r.ok, false);
+  if (!r.ok) assert.equal(r.status, status);
+  return r;
+}
+
+test("options 1: chocobomba with packaging x12 = 10.000 each, name carries the modality", () => {
+  const r = priceCart(pickupWith([{ productId: "chocobomba", optionId: "empaque", quantity: 12 }]), optionCatalog());
+  assert.equal(r.ok, true);
+  if (!r.ok) return;
+  assert.deepEqual(r.lines, [
+    {
+      product_id: "chocobomba",
+      product_name: "Chocobomba (pedido desde 12) · Rellena decorada con empaque e instrucciones",
+      quantity: 12,
+      unit_price: 10000,
+    },
+  ]);
+  assert.equal(r.total, 120000);
+});
+
+test("options 2: caja de chocobombas x6 = 62.500; EN name uses label_en", () => {
+  const r = priceCart(pickupWith([{ productId: "chocobombas", optionId: "x6", quantity: 1 }]), optionCatalog());
+  assert.equal(r.ok, true);
+  if (r.ok) assert.equal(r.total, 62500);
+  const en = priceCart({ ...pickupWith([{ productId: "brownie", optionId: "unidad", quantity: 1 }]), locale: "en" }, optionCatalog());
+  assert.equal(en.ok && en.lines[0].product_name, "Christmas brownie · Each");
+});
+
+test("options 3: brownie bulk step, 11 at 10.000, 12 and 13 at 8.900", () => {
+  for (const [quantity, unit] of [[11, 10000], [12, 8900], [13, 8900]] as const) {
+    const r = priceCart(pickupWith([{ productId: "brownie", optionId: "unidad", quantity }]), optionCatalog());
+    assert.equal(r.ok, true);
+    if (!r.ok) return;
+    assert.equal(r.lines[0].unit_price, unit, `quantity ${quantity}`);
+    assert.equal(r.subtotal, unit * quantity);
+  }
+});
+
+test("options 4: both chocobomba modalities x12 each = two lines", () => {
+  const r = priceCart(
+    pickupWith([
+      { productId: "chocobomba", optionId: "empaque", quantity: 12 },
+      { productId: "chocobomba", optionId: "sin-empaque", quantity: 12 },
+    ]),
+    optionCatalog(),
+  );
+  assert.equal(r.ok, true);
+  if (r.ok) assert.equal(r.subtotal, 12 * 10000 + 12 * 8700);
+});
+
+test("options 5: chocobomba x11 is below the minimum: 400", () => {
+  const r = rejected(priceCart(pickupWith([{ productId: "chocobomba", optionId: "empaque", quantity: 11 }]), optionCatalog()), 400);
+  if (!r.ok) assert.match(r.error, /minimum 12/);
+});
+
+test("options 6: 6 + 6 across modalities does not reach the per-modality minimum: 400", () => {
+  rejected(
+    priceCart(
+      pickupWith([
+        { productId: "chocobomba", optionId: "empaque", quantity: 6 },
+        { productId: "chocobomba", optionId: "sin-empaque", quantity: 6 },
+      ]),
+      optionCatalog(),
+    ),
+    400,
+  );
+});
+
+test("options 7: the same product+option twice is rejected (the cart never sends duplicates)", () => {
+  rejected(
+    priceCart(
+      pickupWith([
+        { productId: "brownie", optionId: "unidad", quantity: 6 },
+        { productId: "brownie", optionId: "unidad", quantity: 6 },
+      ]),
+      optionCatalog(),
+    ),
+    400,
+  );
+});
+
+test("options 8: an option of another product: 400", () => {
+  rejected(priceCart(pickupWith([{ productId: "chocobomba", optionId: "x2", quantity: 12 }]), optionCatalog()), 400);
+});
+
+test("options 9: unknown option 400; product with options but no option (old cart) 409", () => {
+  rejected(priceCart(pickupWith([{ productId: "chocobombas", optionId: "x99", quantity: 1 }]), optionCatalog()), 400);
+  const r = rejected(priceCart(pickupWith([{ productId: "chocobombas", quantity: 1 }]), optionCatalog()), 409);
+  if (!r.ok) assert.deepEqual(r.unavailable, ["chocobombas"]);
+});
+
+test("options 10: an option on a product without options, or on a combo: 400", () => {
+  rejected(priceCart(pickupWith([{ productId: "galleta", optionId: "empaque", quantity: 1 }]), optionCatalog()), 400);
+  const catalog = optionCatalog();
+  catalog.options!.set("combo", [option({ id: "c1" })]);
+  rejected(
+    priceCart(pickupWith([{ productId: "combo", optionId: "c1", quantity: 1, combo: { cookieId: "choco", includedSalsaId: "arequipe" } }]), catalog),
+    400,
+  );
+});
+
+test("options 11: prices sent by the browser are dropped; the option price is charged", () => {
+  const parsed = parseCheckoutInput({
+    ...input({ fulfillment: "pickup", delivery: undefined }),
+    total: 1,
+    items: [{ productId: "chocobombas", optionId: "x8", quantity: 1, unitPrice: 1, price: 1, option: { price: 1 } }],
+  });
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok) return;
+  assert.deepEqual(parsed.value.items, [{ productId: "chocobombas", optionId: "x8", quantity: 1 }]);
+  const r = priceCart(parsed.value, optionCatalog());
+  assert.equal(r.ok && r.total, 81900);
+});
+
+test("options 12: an active sale on the product is ignored when it has options", () => {
+  const catalog = optionCatalog();
+  // loadCatalog puts the effective (sale) price in products.price.
+  catalog.products.get("chocobombas")!.price = 1000;
+  const r = priceCart(pickupWith([{ productId: "chocobombas", optionId: "x2", quantity: 1 }]), catalog);
+  assert.equal(r.ok && r.total, 23000);
+});
+
+test("options 13: options with unusable money are ignored; none left: 409", () => {
+  const r = rejected(priceCart(pickupWith([{ productId: "rota", optionId: "mala", quantity: 1 }]), optionCatalog()), 409);
+  if (!r.ok) assert.deepEqual(r.unavailable, ["rota"]);
+  const catalog = optionCatalog();
+  catalog.options!.get("chocobombas")!.push(option({ id: "neg", price: -5 }));
+  rejected(priceCart(pickupWith([{ productId: "chocobombas", optionId: "neg", quantity: 1 }]), catalog), 400);
+});
+
+test("options 14: up to MAX_LINE_QTY units; 51 is rejected by the schema", () => {
+  const r = priceCart(pickupWith([{ productId: "chocobomba", optionId: "sin-empaque", quantity: 50 }]), optionCatalog());
+  assert.equal(r.ok && r.total, 50 * 8700);
+  const parsed = parseCheckoutInput({
+    ...input({ fulfillment: "pickup", delivery: undefined }),
+    items: [{ productId: "chocobomba", optionId: "sin-empaque", quantity: 51 }],
+  });
+  assert.equal(parsed.ok, false);
+});
+
+test("options 15: the cheapest valid option line clears the Bold minimum", () => {
+  const r = priceCart(pickupWith([{ productId: "chocobombas", optionId: "x2", quantity: 1 }]), optionCatalog());
+  assert.ok(r.ok && r.total >= BOLD_MIN_AMOUNT);
+});
+
+test("options: an unavailable product or hidden category still blocks it: 409", () => {
+  const catalog = optionCatalog();
+  catalog.products.get("brownie")!.available = false;
+  catalog.products.get("chocobombas")!.categoryVisible = false;
+  const r = rejected(
+    priceCart(
+      pickupWith([
+        { productId: "brownie", optionId: "unidad", quantity: 1 },
+        { productId: "chocobombas", optionId: "x2", quantity: 1 },
+      ]),
+      catalog,
+    ),
+    409,
+  );
+  if (!r.ok) assert.deepEqual(r.unavailable, ["brownie", "chocobombas"]);
+});
+
+test("options: leftover options on a combo don't make it orderable at price 0 (audit B1)", () => {
+  const catalog = optionCatalog();
+  catalog.products.get("combo")!.price = 0;
+  catalog.options!.set("combo", [option({ id: "c1" })]);
+  const r = rejected(
+    priceCart(pickupWith([{ productId: "combo", quantity: 1, combo: { cookieId: "choco", includedSalsaId: "arequipe" } }]), catalog),
+    409,
+  );
+  if (!r.ok) assert.deepEqual(r.unavailable, ["combo"]);
 });

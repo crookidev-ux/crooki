@@ -10,6 +10,8 @@ import type { GiftCardChoice } from "@/lib/types";
 export type CheckoutItemInput = {
   productId: string;
   quantity: number;
+  /** product_options.id; required when the product has options (price-cart decides). */
+  optionId?: string;
   combo?: { cookieId: string; includedSalsaId?: string };
   box?: { cookies: { cookieId: string; quantity: number }[]; giftCard: GiftCardChoice };
   helado?: { salsas: { salsaId: string; quantity: number }[] };
@@ -107,6 +109,9 @@ function parseItem(raw: unknown, i: number): CheckoutItemInput {
     productId: text(r.productId, `${f}.productId`),
     quantity: qty(r.quantity, `${f}.quantity`),
   };
+  if (r.optionId !== undefined && r.optionId !== null && r.optionId !== "") {
+    item.optionId = text(r.optionId, `${f}.optionId`);
+  }
 
   if (r.combo !== undefined) {
     const c = record(r.combo, `${f}.combo`);
@@ -143,7 +148,7 @@ function parseItem(raw: unknown, i: number): CheckoutItemInput {
     };
   }
 
-  const kinds = [item.combo, item.box, item.helado].filter((x) => x !== undefined).length;
+  const kinds = [item.optionId, item.combo, item.box, item.helado].filter((x) => x !== undefined).length;
   if (kinds > 1) fail(`${f} has more than one configuration`);
   return item;
 }

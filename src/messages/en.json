@@ -322,6 +322,15 @@
     "ask_in_store": "Ask in store",
     "delivery_any": "Delivery in Cartagena or pick up at the shop",
     "description": "Description",
-    "more": "More Christmas gifts"
+    "more": "More Christmas gifts",
+    "option_legend": "Choose an option",
+    "from_price": "From {price}",
+    "unit_price": "{price} each",
+    "line_total": "Total: {total}",
+    "bulk_hint": "From {qty} units: {price} each",
+    "bulk_reached": "Bulk price applied: {price} each",
+    "min_qty": "Minimum order: {min} units",
+    "note_cta": "Message us on WhatsApp",
+    "note_whatsapp": "Hi, I'd like a quote for a large order of {name}."
   }
 }

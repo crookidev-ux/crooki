@@ -69,8 +69,9 @@ export default function CartDrawer() {
           ) : (
             <div className="flex flex-col gap-4">
               {items.map((item) => {
-                const { product, quantity, lineId, combo, box, helado, unitPrice } = item;
+                const { product, quantity, lineId, combo, box, helado, option, unitPrice } = item;
                 const name = locale === "en" ? product.name_en : product.name_es;
+                const minQty = option?.min_qty ?? 1;
                 const imageUrl =
                   product.product_images?.[0]?.url ||
                   `/images/${product.id}.jpg`;
@@ -91,6 +92,12 @@ export default function CartDrawer() {
                       <p className="font-semibold text-sm leading-tight truncate">
                         {name}
                       </p>
+
+                      {option && (
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          · {(locale === "en" && option.label_en) || option.label_es}
+                        </p>
+                      )}
 
                       {combo && (
                         <ul className="text-xs text-gray-500 mt-0.5 space-y-0.5">
@@ -146,7 +153,9 @@ export default function CartDrawer() {
                       <div className="flex items-center gap-2 mt-2">
                         <button
                           onClick={() => updateQuantity(lineId, quantity - 1)}
-                          className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors"
+                          // Option lines stop at their minimum; the trash button removes them.
+                          disabled={minQty > 1 && quantity <= minQty}
+                          className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
                         >
                           <Minus className="w-3 h-3" />
                         </button>

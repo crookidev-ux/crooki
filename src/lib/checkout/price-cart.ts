@@ -1,7 +1,7 @@
 // Pure server-side cart pricing. Every price and the delivery fee come from
 // the catalog loaded from the database; the browser only says what it wants.
 // The rules mirror the menu configurators (Combo/Box/HeladoConfigurator).
-import { boxUnitPrice, comboUnitPrice, heladoUnitPrice, lineDisplayName } from "../pricing.ts";
+import { boxUnitPrice, comboUnitPrice, heladoUnitPrice, lineDisplayName, optionUnitPrice } from "../pricing.ts";
 import {
   allowedFulfillments,
   getZone,
@@ -32,8 +32,24 @@ export type CatalogProduct = {
   included_salsas_count?: number;
 };
 
+/** A product_options row (integer pesos), as loaded by catalog.ts. */
+export type CatalogOption = {
+  id: string;
+  label_es: string;
+  label_en: string;
+  price: number;
+  min_qty: number;
+  bulk_min_qty: number | null;
+  bulk_price: number | null;
+};
+
 export type Catalog = {
   products: Map<string, CatalogProduct>;
+  /**
+   * productId → its options. A product with options is charged ONLY from
+   * them (never products.price / sale price). Absent = no product has options.
+   */
+  options?: Map<string, CatalogOption[]>;
   /** key `${comboId}:${cookieId}` → extra_price */
   comboCookies: Map<string, number>;
   /** key `${comboId}:${salsaId}` → extra_price (also helado salsas: comboId = helado id) */
@@ -74,12 +90,36 @@ function extraFor(map: Map<string, number>, parentId: string, childId: string): 
   return validMoney(v) ? money(v) : undefined;
 }
 
-/** A product a customer can put in the cart as a line of its own. */
-function orderable(p: CatalogProduct | undefined): boolean {
+const positiveInt = (n: unknown): n is number => typeof n === "number" && Number.isInteger(n) && n > 0;
+
+/** Same rules as the product_options CHECKs; a row that breaks them is never used. */
+function validOption(o: CatalogOption): boolean {
+  if (!positiveInt(o.price) || !positiveInt(o.min_qty)) return false;
+  if (o.bulk_min_qty == null && o.bulk_price == null) return true;
   return (
-    !!p &&
-    p.available &&
-    p.categoryVisible &&
+    positiveInt(o.bulk_min_qty) &&
+    positiveInt(o.bulk_price) &&
+    o.bulk_min_qty > o.min_qty &&
+    o.bulk_price < o.price
+  );
+}
+
+/** The options a product is sold with: undefined when it has none at all. */
+function optionsOf(catalog: Catalog, productId: string): CatalogOption[] | undefined {
+  // Combos, boxes and helados charge from products.price: leftover option rows
+  // must not let them skip its checks.
+  const category = catalog.products.get(productId)?.category;
+  if (category === "combos" || category === "cajas" || category === "helados") return undefined;
+  const rows = catalog.options?.get(productId);
+  return rows && rows.length > 0 ? rows.filter(validOption) : undefined;
+}
+
+/** A product a customer can put in the cart as a line of its own. */
+function orderable(p: CatalogProduct | undefined, options: CatalogOption[] | undefined): boolean {
+  if (!p || !p.available || !p.categoryVisible) return false;
+  // With options the price comes from them; at least one must be usable.
+  if (options) return options.length > 0;
+  return (
     validMoney(p.price) &&
     money(p.price) > 0 &&
     validOptionalMoney(p.gift_card_price) &&
@@ -114,6 +154,8 @@ function priceLine(
         : product.category === "helados"
           ? "helado"
           : "plain";
+  // Options exist only on plain products (schema.ts also forbids mixing them).
+  if (item.optionId && kind !== "plain") return bad("this product has no options");
 
   // Components that exist in the whitelist but can't be sold right now.
   const unavailable: string[] = [];
@@ -198,8 +240,22 @@ function priceLine(
     });
   } else {
     if (item.combo || item.box || item.helado) return bad("this product takes no selection");
-    unit = base;
-    name = nameOf(product);
+    const options = optionsOf(catalog, product.id);
+    if (options) {
+      // Old carts (saved before the product had options) send no option.
+      if (!item.optionId) return { ok: false, unavailable: [product.id] };
+      const opt = options.find((o) => o.id === item.optionId);
+      if (!opt) return bad("option not offered for this product");
+      if (item.quantity < opt.min_qty) return bad(`minimum ${opt.min_qty} units for this option`);
+      unit = optionUnitPrice(opt, item.quantity);
+      name = lineDisplayName(nameOf(product), {
+        option: { label: (locale === "en" && opt.label_en) || opt.label_es },
+      });
+    } else {
+      if (item.optionId) return bad("this product has no options");
+      unit = base;
+      name = nameOf(product);
+    }
   }
 
   return {
@@ -217,10 +273,21 @@ export function priceCart(input: CheckoutInput, catalog: Catalog): PriceCartResu
     if (!unavailable.includes(id)) unavailable.push(id);
   };
   for (const item of input.items) {
-    if (!orderable(catalog.products.get(item.productId))) addUnavailable(item.productId);
+    const ok = orderable(catalog.products.get(item.productId), optionsOf(catalog, item.productId));
+    if (!ok) addUnavailable(item.productId);
   }
   if (unavailable.length > 0) {
     return { ok: false, status: 409, error: "Some products are not available", unavailable };
+  }
+
+  // The cart merges equal lines, so a repeated product+option only comes from
+  // a hand-made request (e.g. splitting lines to play with the minimum).
+  const optionLines = new Set<string>();
+  for (const item of input.items) {
+    if (!item.optionId) continue;
+    const k = key(item.productId, item.optionId);
+    if (optionLines.has(k)) return { ok: false, status: 400, error: `${item.productId}: duplicate option line` };
+    optionLines.add(k);
   }
 
   // 2. Price each line from the catalog (400 on an invalid configuration,

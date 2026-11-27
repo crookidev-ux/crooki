@@ -56,3 +56,22 @@ test("ended sale → normal price, no end date; sold out → OutOfStock", () => 
   assert.equal(product.offers.priceValidUntil, undefined);
   assert.equal(product.offers.availability, "https://schema.org/OutOfStock");
 });
+
+test("options: one option gives its price; several give an AggregateOffer; sales ignored", () => {
+  const opt = (id: string, price: number) => ({
+    id, product_id: "p1", label_es: id, label_en: id, price, min_qty: 1, bulk_min_qty: null, bulk_price: null, display_order: 0,
+  });
+  const sale = { sale_price: 1000, sale_ends_at: "2026-12-24T04:59:00Z" };
+  const [one] = JSON.parse(JSON.stringify(navidadJsonLd({ ...base, ...sale, product_options: [opt("u", 10000)] }, opts, now)));
+  assert.equal(one.offers["@type"], "Offer");
+  assert.equal(one.offers.price, 10000);
+  assert.equal(one.offers.priceValidUntil, undefined);
+  const [many] = JSON.parse(
+    JSON.stringify(navidadJsonLd({ ...base, product_options: [opt("x2", 23000), opt("x8", 81900), opt("x4", 42000)] }, opts, now)),
+  );
+  assert.equal(many.offers["@type"], "AggregateOffer");
+  assert.equal(many.offers.price, undefined);
+  assert.equal(many.offers.lowPrice, 23000);
+  assert.equal(many.offers.highPrice, 81900);
+  assert.equal(many.offers.offerCount, 3);
+});

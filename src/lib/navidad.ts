@@ -3,7 +3,8 @@ import { cache } from "react";
 import { unstable_rethrow } from "next/navigation";
 import { unstable_cache } from "next/cache";
 import { createClient as createAnonClient } from "@supabase/supabase-js";
-import type { CategoryRow, Product } from "@/lib/types";
+import { isMissingTable } from "@/lib/missing-table";
+import type { CategoryRow, Product, ProductOption } from "@/lib/types";
 
 // Public reads for the Christmas catalog (/navidad, /navidad/[slug], the
 // Header/Footer link and the sitemap). Every loader fails closed: with no
@@ -26,6 +27,26 @@ const byOrder = (a: { display_order: number }, b: { display_order: number }) =>
 /** Photos in the admin's order (the first one is the cover). */
 function withSortedImages(p: Product): Product {
   return { ...p, product_images: [...(p.product_images ?? [])].sort(byOrder) };
+}
+
+/**
+ * Attaches each product's options («Caja x2»…), in display order. Separate
+ * query (not an embed) so the pages keep working before migration
+ * 20261126000000 creates the table: then no product has options.
+ */
+async function withOptions(supabase: Awaited<ReturnType<typeof client>>, products: Product[]): Promise<Product[]> {
+  if (products.length === 0) return products;
+  const { data, error } = await supabase
+    .from("product_options")
+    .select("*")
+    .in("product_id", products.map((p) => p.id))
+    .order("display_order");
+  if (error) {
+    if (isMissingTable(error)) return products;
+    throw error;
+  }
+  const rows = (data as ProductOption[] | null) ?? [];
+  return products.map((p) => ({ ...p, product_options: rows.filter((o) => o.product_id === p.id) }));
 }
 
 /** Visible categories of kind "navidad", in display order. Cached per request. */
@@ -88,7 +109,7 @@ export const loadNavidadProducts = cache(async (): Promise<Product[]> => {
       .not("slug", "is", null)
       .order("display_order");
     if (error) throw error;
-    return ((data as Product[] | null) ?? []).map(withSortedImages);
+    return withOptions(supabase, ((data as Product[] | null) ?? []).map(withSortedImages));
   } catch (err) {
     unstable_rethrow(err); // let Next.js see cookies()/dynamic usage
     console.error("loadNavidadProducts", err);
@@ -111,7 +132,7 @@ export const loadNavidadProduct = cache(
         .maybeSingle();
       if (error) throw error;
       if (!data) return null;
-      const product = withSortedImages(data as Product);
+      const [product] = await withOptions(supabase, [withSortedImages(data as Product)]);
       const category = categories.find((c) => c.slug === product.category)!;
       return { product, category };
     } catch (err) {

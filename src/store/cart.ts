@@ -10,6 +10,9 @@ import type {
 // Relative .ts imports so `npm test` (plain Node) can load this store.
 import { effectivePrice } from "../lib/promo.ts";
 import { MAX_LINE_QTY } from "../lib/cart-limits.ts";
+import { optionUnitPrice } from "../lib/pricing.ts";
+
+type CartOption = NonNullable<CartItem["option"]>;
 
 interface CartStore {
   items: CartItem[];
@@ -21,6 +24,8 @@ interface CartStore {
   addCombo: (product: Product, selection: ComboSelection, unitPrice: number) => void;
   addBox: (product: Product, selection: BoxSelection, unitPrice: number) => void;
   addHelado: (product: Product, selection: HeladoSelection, unitPrice: number) => void;
+  /** Adds `quantity` units of one option; the line stays within min_qty..MAX_LINE_QTY. */
+  addOption: (product: Product, option: CartOption, quantity: number) => void;
   removeItem: (lineId: string) => void;
   updateQuantity: (lineId: string, quantity: number) => void;
   clearCart: () => void;
@@ -54,8 +59,12 @@ function boxSelectionKey(s: BoxSelection): string {
 }
 
 function lineUnitPrice(item: CartItem): number {
+  if (item.option) return optionUnitPrice(item.option, item.quantity);
   return item.unitPrice ?? effectivePrice(item.product);
 }
+
+const clampOptionQty = (option: CartOption, quantity: number) =>
+  Math.min(MAX_LINE_QTY, Math.max(option.min_qty, Math.floor(quantity) || option.min_qty));
 
 export const useCartStore = create<CartStore>()(
   persist(
@@ -156,6 +165,24 @@ export const useCartStore = create<CartStore>()(
         set({ isOpen: true });
       },
 
+      addOption: (product: Product, option: CartOption, quantity: number) => {
+        const { items } = get();
+        const lineId = `${product.id}#opt#${option.id}`;
+        const existing = items.find((i) => i.lineId === lineId);
+        const qty = clampOptionQty(option, (existing?.quantity ?? 0) + quantity);
+        const line: CartItem = {
+          product,
+          quantity: qty,
+          lineId,
+          option,
+          unitPrice: optionUnitPrice(option, qty),
+        };
+        set({
+          items: existing ? items.map((i) => (i.lineId === lineId ? line : i)) : [...items, line],
+          isOpen: true,
+        });
+      },
+
       removeItem: (lineId: string) => {
         set({ items: get().items.filter((i) => i.lineId !== lineId) });
       },
@@ -166,9 +193,15 @@ export const useCartStore = create<CartStore>()(
           return;
         }
         set({
-          items: get().items.map((i) =>
-            i.lineId === lineId ? { ...i, quantity: Math.min(MAX_LINE_QTY, quantity) } : i,
-          ),
+          items: get().items.map((i) => {
+            if (i.lineId !== lineId) return i;
+            // An option line never goes below its minimum (the trash button removes it).
+            if (i.option) {
+              const qty = clampOptionQty(i.option, quantity);
+              return { ...i, quantity: qty, unitPrice: optionUnitPrice(i.option, qty) };
+            }
+            return { ...i, quantity: Math.min(MAX_LINE_QTY, quantity) };
+          }),
         });
       },
 

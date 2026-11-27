@@ -322,6 +322,15 @@
     "ask_in_store": "Consultar en tienda",
     "delivery_any": "Domicilio en Cartagena o recógelo en el local",
     "description": "Descripción",
-    "more": "Más regalos de Navidad"
+    "more": "Más regalos de Navidad",
+    "option_legend": "Elige la presentación",
+    "from_price": "Desde {price}",
+    "unit_price": "{price} c/u",
+    "line_total": "Total: {total}",
+    "bulk_hint": "Desde {qty} unidades: {price} c/u",
+    "bulk_reached": "Precio por cantidad aplicado: {price} c/u",
+    "min_qty": "Pedido mínimo: {min} unidades",
+    "note_cta": "Escríbenos por WhatsApp",
+    "note_whatsapp": "Hola, quiero cotizar un pedido grande de {name}."
   }
 }

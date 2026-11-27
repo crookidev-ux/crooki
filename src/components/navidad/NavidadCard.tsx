@@ -7,6 +7,8 @@ import PriceTag from "@/components/ui/PriceTag";
 import { visibleTag } from "@/lib/promo";
 import type { Product } from "@/lib/types";
 
+const cop = (n: number) => `$${n.toLocaleString("es-CO")}`;
+
 /** Catalog card: the whole card links to the product page. */
 export default function NavidadCard({ product, locale }: { product: Product; locale: string }) {
   const t = useTranslations("navidad");
@@ -15,6 +17,8 @@ export default function NavidadCard({ product, locale }: { product: Product; loc
   const description = locale === "en" ? product.description_en || product.description_es : product.description_es;
   const cover = product.product_images?.[0]?.url;
   const tag = visibleTag(product);
+  // Options set the price (no sale on them): «Desde» the cheapest, or the only one.
+  const optionPrices = (product.product_options ?? []).map((o) => o.price);
 
   return (
     <Link
@@ -34,7 +38,15 @@ export default function NavidadCard({ product, locale }: { product: Product; loc
           <ImageOff aria-hidden="true" className="absolute inset-0 m-auto h-10 w-10 text-[#8b0031]/30" />
         )}
         {tag && <PromoRibbon tag={tag} />}
-        {product.price > 0 && <PriceTag product={product} variant="chip" className="absolute right-4 top-4" />}
+        {optionPrices.length > 0 ? (
+          <span className="absolute right-4 top-4 rounded-full px-3 py-1.5 text-sm font-black shadow-lg" style={{ backgroundColor: "#8b0031", color: "#ffffff" }}>
+            {optionPrices.length > 1
+              ? t("from_price", { price: cop(Math.min(...optionPrices)) })
+              : cop(optionPrices[0])}
+          </span>
+        ) : (
+          product.price > 0 && <PriceTag product={product} variant="chip" className="absolute right-4 top-4" />
+        )}
         {!product.available && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/55">
             <span className="rounded-full bg-black/60 px-5 py-2 font-bold text-white">{tMenu("sold_out")}</span>

@@ -56,6 +56,23 @@ export interface ProductImage {
   display_order: number;
 }
 
+/**
+ * A product_options row: a modality («Caja x2») with its own price, minimum
+ * and optional bulk step. Prices are integer pesos. When a product has
+ * options the checkout charges only from them (src/lib/checkout/price-cart.ts).
+ */
+export interface ProductOption {
+  id: string;
+  product_id: string;
+  label_es: string;
+  label_en: string;
+  price: number;
+  min_qty: number;
+  bulk_min_qty: number | null;
+  bulk_price: number | null;
+  display_order: number;
+}
+
 export interface Product {
   id: string;
   name_es: string;
@@ -76,6 +93,10 @@ export interface Product {
   // URL of the product page (/navidad/[slug]); null for menu/merch products.
   // Optional until migration 20261124010000 is applied.
   slug?: string | null;
+  // Options and wholesale note (migration 20261126000000); optional until applied.
+  product_options?: ProductOption[];
+  note_es?: string | null;
+  note_en?: string | null;
   // Combo-specific fields. `includes_salsa` is meaningful only for combos.
   // The two arrays are populated when the combo product is loaded with its
   // configuration; they're optional everywhere else.
@@ -166,6 +187,8 @@ export interface CartItem {
   combo?: ComboSelection;
   box?: BoxSelection;
   helado?: HeladoSelection;
+  // Chosen modality (copy for the preview only: the server re-prices it).
+  option?: Pick<ProductOption, "id" | "label_es" | "label_en" | "price" | "min_qty" | "bulk_min_qty" | "bulk_price">;
   // Per-unit price including all customization extras. Falls back to
   // `product.price` if absent.
   unitPrice?: number;

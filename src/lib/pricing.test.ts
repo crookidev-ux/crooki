@@ -5,6 +5,7 @@ import {
   boxUnitPrice,
   heladoUnitPrice,
   lineDisplayName,
+  optionUnitPrice,
 } from "./pricing.ts";
 
 test("comboUnitPrice adds the cookie extra", () => {
@@ -71,4 +72,16 @@ test("lineDisplayName: helado", () => {
   );
   assert.equal(lineDisplayName("Helado", { helado: { salsas: [] } }), "Helado");
   assert.equal(lineDisplayName("Galleta", {}), "Galleta");
+});
+
+test("optionUnitPrice: bulk price from bulk_min_qty, base price below it", () => {
+  const brownie = { price: 10000, min_qty: 1, bulk_min_qty: 12, bulk_price: 8900 };
+  assert.equal(optionUnitPrice(brownie, 11), 10000);
+  assert.equal(optionUnitPrice(brownie, 12), 8900);
+  assert.equal(optionUnitPrice(brownie, 13), 8900);
+  assert.equal(optionUnitPrice({ price: 23000, min_qty: 1 }, 40), 23000);
+});
+
+test("lineDisplayName: option label after the trimmed product name", () => {
+  assert.equal(lineDisplayName("Chocobomba ", { option: { label: "Sin empaque " } }), "Chocobomba · Sin empaque");
 });

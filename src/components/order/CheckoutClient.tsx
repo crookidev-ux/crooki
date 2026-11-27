@@ -73,6 +73,7 @@ const money = (n: number) => `$${n.toLocaleString("es-CO")}`;
 
 function toItemInput(item: CartItem): CheckoutItemInput {
   const base: CheckoutItemInput = { productId: item.product.id, quantity: item.quantity };
+  if (item.option) return { ...base, optionId: item.option.id };
   if (item.combo) {
     return {
       ...base,
@@ -762,7 +763,7 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
 
               <div className="flex flex-col gap-3 mb-5">
                 {items.map((item) => {
-                  const { product, quantity, lineId, combo, box, helado, unitPrice } = item;
+                  const { product, quantity, lineId, combo, box, helado, option, unitPrice } = item;
                   const name = locale === "en" ? product.name_en : product.name_es;
                   const linePrice = unitPrice ?? effectivePrice(product);
                   return (
@@ -771,6 +772,11 @@ export default function CheckoutClient({ locale, boldEnabled, merchCategorySlugs
                         <div>
                           {name} <span className="text-gray-400">x{quantity}</span>
                         </div>
+                        {option && (
+                          <div className="text-xs text-gray-400 mt-0.5">
+                            {(locale === "en" && option.label_en) || option.label_es}
+                          </div>
+                        )}
                         {combo && (
                           <div className="text-xs text-gray-400 mt-0.5">
                             {combo.cookieName}

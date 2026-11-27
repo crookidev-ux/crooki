@@ -5,7 +5,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServiceClient } from "@/lib/supabase/service";
 import { parseDeliveryRule, type DeliveryRule } from "@/lib/delivery-zones";
 import { effectivePrice } from "@/lib/promo";
-import type { Catalog, CatalogProduct } from "./price-cart";
+import { isMissingTable } from "@/lib/missing-table";
+import type { Catalog, CatalogOption, CatalogProduct } from "./price-cart";
 
 type ProductRow = {
   id: string;
@@ -57,7 +58,39 @@ async function loadJunction(
 }
 
 /**
- * Loads `productIds`, their combo/box/helado configuration rows, and the
+ * product_options of `ids`, grouped by product. Money is parsed like the
+ * products' (price-cart.ts drops rows that break the table CHECKs). Before
+ * migration 20261126000000 the table does not exist: then no product has
+ * options, which is safe because those products still cost 0 («Consultar»).
+ */
+async function loadOptions(supabase: SupabaseClient, ids: string[]): Promise<Map<string, CatalogOption[]>> {
+  const res = await supabase
+    .from("product_options")
+    .select("id, product_id, label_es, label_en, price, min_qty, bulk_min_qty, bulk_price, display_order")
+    .in("product_id", ids)
+    .order("display_order");
+  const options = new Map<string, CatalogOption[]>();
+  if (res.error && isMissingTable(res.error)) return options;
+  for (const r of unwrap<Record<string, unknown>>(res, "product_options")) {
+    const productId = String(r.product_id);
+    const list = options.get(productId) ?? [];
+    list.push({
+      id: String(r.id),
+      label_es: String(r.label_es ?? ""),
+      label_en: String(r.label_en ?? ""),
+      // An unparseable amount becomes NaN and makes the row invalid.
+      price: toMoney(r.price) ?? Number.NaN,
+      min_qty: Number(r.min_qty),
+      bulk_min_qty: r.bulk_min_qty == null ? null : Number(r.bulk_min_qty),
+      bulk_price: r.bulk_price == null ? null : (toMoney(r.bulk_price) ?? Number.NaN),
+    });
+    options.set(productId, list);
+  }
+  return options;
+}
+
+/**
+ * Loads `productIds`, their combo/box/helado configuration rows, their options, and the
  * cookie/salsa products those rows point to (for line names).
  */
 export async function loadCatalog(
@@ -73,11 +106,13 @@ export async function loadCatalog(
   };
   if (ids.length === 0) return catalog;
 
-  const [comboCookies, comboSalsas, boxCookies] = await Promise.all([
+  const [comboCookies, comboSalsas, boxCookies, options] = await Promise.all([
     loadJunction(supabase, "combo_cookies", "combo_id", "cookie_id", ids),
     loadJunction(supabase, "combo_salsas", "combo_id", "salsa_id", ids),
     loadJunction(supabase, "box_cookies", "box_id", "cookie_id", ids),
+    loadOptions(supabase, ids),
   ]);
+  catalog.options = options;
   const fill = (map: Map<string, number>, rows: JunctionRow[]) => {
     for (const r of rows) {
       // A row with unusable money is dropped, so choosing it fails with 400.

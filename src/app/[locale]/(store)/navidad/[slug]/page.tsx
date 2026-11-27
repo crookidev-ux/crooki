@@ -123,7 +123,8 @@ export default async function NavidadProductPage({ params }: { params: Params })
               {locale === "en" ? category.label_en || category.label_es : category.label_es}
             </p>
             <h1 className="mb-4 text-4xl font-black leading-tight text-gray-900 md:text-5xl">{name}</h1>
-            {product.price > 0 && (
+            {/* With options the price depends on the choice: AddToOrder shows it. */}
+            {product.price > 0 && !product.product_options?.length && (
               <div className="mb-6">
                 <PriceTag product={product} className="text-3xl!" />
               </div>

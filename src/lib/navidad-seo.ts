@@ -25,8 +25,17 @@ export function navidadJsonLd(
     itemCondition: "https://schema.org/NewCondition",
     seller: { "@type": "Organization", name: "Crooki Bake Bar" },
   };
-  // Last day of the sale in Colombia time (the admin types it in Bogotá time).
-  if (onSale && p.sale_ends_at) offer.priceValidUntil = isoToBogotaLocal(p.sale_ends_at).slice(0, 10);
+  const options = p.product_options ?? [];
+  if (options.length > 0) {
+    // Options set the price (sales do not apply to them).
+    const prices = options.map((o) => o.price);
+    delete offer.price;
+    if (options.length === 1) offer.price = prices[0];
+    else Object.assign(offer, { "@type": "AggregateOffer", lowPrice: Math.min(...prices), highPrice: Math.max(...prices), offerCount: options.length });
+  } else if (onSale && p.sale_ends_at) {
+    // Last day of the sale in Colombia time (the admin types it in Bogotá time).
+    offer.priceValidUntil = isoToBogotaLocal(p.sale_ends_at).slice(0, 10);
+  }
 
   return [
     {

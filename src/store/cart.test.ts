@@ -55,3 +55,40 @@ test("invalid quantities fall back to one unit", () => {
   addItem(caja, -4);
   assert.equal(useCartStore.getState().items[0].quantity, 3);
 });
+
+const brownie = { ...caja, id: "brownie", sale_price: null, price: 10000 } satisfies Product;
+const unidad = { id: "unidad", label_es: "Unidad", label_en: "Each", price: 10000, min_qty: 1, bulk_min_qty: 12, bulk_price: 8900 };
+const empaque = { id: "empaque", label_es: "Con empaque", label_en: "Packed", price: 10000, min_qty: 12, bulk_min_qty: null, bulk_price: null };
+
+test("addOption: one line per product+option, starting at the minimum", () => {
+  const { addOption } = useCartStore.getState();
+  addOption(brownie, empaque, 1);
+  addOption(brownie, unidad, 2);
+  const [a, b] = useCartStore.getState().items;
+  assert.equal(a.lineId, "brownie#opt#empaque");
+  assert.equal(a.quantity, 12, "never below min_qty");
+  assert.equal(b.lineId, "brownie#opt#unidad");
+  assert.equal(b.quantity, 2);
+  addOption(brownie, unidad, 3);
+  assert.equal(useCartStore.getState().items.length, 2, "same option merges");
+  assert.equal(useCartStore.getState().items[1].quantity, 5);
+});
+
+test("option lines: bulk price from 12, minimum kept, total follows the step", () => {
+  const { addOption, updateQuantity } = useCartStore.getState();
+  addOption(brownie, unidad, 11);
+  assert.equal(useCartStore.getState().total(), 110000);
+  updateQuantity("brownie#opt#unidad", 12);
+  assert.equal(useCartStore.getState().items[0].unitPrice, 8900);
+  assert.equal(useCartStore.getState().total(), 12 * 8900);
+  addOption(brownie, empaque, 12);
+  updateQuantity("brownie#opt#empaque", 11);
+  assert.equal(useCartStore.getState().items[1].quantity, 12, "stays at the minimum");
+  updateQuantity("brownie#opt#empaque", 0);
+  assert.equal(useCartStore.getState().items.length, 1, "0 still removes the line");
+});
+
+test("a saved cart without options (old format) keeps its plain price", () => {
+  useCartStore.setState({ items: [{ product: caja, quantity: 2, lineId: "caja-navidad", unitPrice: 35000 }] });
+  assert.equal(useCartStore.getState().total(), 70000);
+});

@@ -47,3 +47,29 @@ test("scheduleAccepted is kept only when it is exactly true", () => {
     assert.equal(r.ok && r.value.scheduleAccepted, undefined);
   }
 });
+
+const withItem = (item: Record<string, unknown>) => ({ ...body(""), items: [item] });
+
+test("optionId is kept as a trimmed string; empty or null means no option", () => {
+  const r = parseCheckoutInput(withItem({ productId: "chocobomba", optionId: " opt-1 ", quantity: 12 }));
+  assert.equal(r.ok, true);
+  if (r.ok) assert.deepEqual(r.value.items, [{ productId: "chocobomba", optionId: "opt-1", quantity: 12 }]);
+  for (const optionId of ["", null, undefined]) {
+    const plain = parseCheckoutInput(withItem({ productId: "galleta", optionId, quantity: 1 }));
+    assert.equal(plain.ok, true);
+    if (plain.ok) assert.equal("optionId" in plain.value.items[0], false);
+  }
+});
+
+test("optionId must be a short string and cannot be combined with combo/box/helado", () => {
+  for (const item of [
+    { productId: "x", optionId: 5, quantity: 1 },
+    { productId: "x", optionId: { id: "a" }, quantity: 1 },
+    { productId: "x", optionId: "a".repeat(201), quantity: 1 },
+    { productId: "x", optionId: "a", quantity: 1, combo: { cookieId: "c" } },
+    { productId: "x", optionId: "a", quantity: 1, helado: { salsas: [] } },
+    { productId: "x", optionId: "a", quantity: 1, box: { cookies: [], giftCard: "none" } },
+  ]) {
+    assert.equal(parseCheckoutInput(withItem(item)).ok, false, JSON.stringify(item).slice(0, 80));
+  }
+});
